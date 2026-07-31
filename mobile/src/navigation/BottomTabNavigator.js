@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useNavigationState } from '@react-navigation/native';
 import React from 'react';
-import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { COLORS, SHADOWS } from '../constants/theme';
 import { useVoiceContext } from '../context/VoiceContext';
 
@@ -18,7 +18,6 @@ const Tab = createBottomTabNavigator();
 const CustomCenterButton = ({ onPress }) => {
   const { isListening, toggleListening } = useVoiceContext();
 
-  // Directly subscribe to current tab route name for accurate icon updates
   const currentRouteName = useNavigationState((state) => {
     if (!state || !state.routes || state.index === undefined) return 'HomeTab';
     const activeRoute = state.routes[state.index];
@@ -30,10 +29,8 @@ const CustomCenterButton = ({ onPress }) => {
 
   const handleCenterPress = (e) => {
     if (isChatScreen) {
-      // On Chat screen: Raised center mic button directly starts/stops voice recording!
       toggleListening();
     } else {
-      // On Home or other tabs: Navigate to Chat tab
       onPress(e);
     }
   };
@@ -99,11 +96,12 @@ export const BottomTabNavigator = () => {
         }}
       />
 
-      {/* Dynamic Floating Center Button (Chat Icon on Home -> Mic Voice Recording Button on Chat Screen) */}
+      {/* Dynamic Floating Center Button (Hides main tab bar on Chat screen) */}
       <Tab.Screen
         name="VoiceMicTab"
         component={AIAssistantScreen}
         options={{
+          tabBarStyle: { display: 'none' }, // Hides main tab bar on Chat Screen
           tabBarButton: (props) => (
             <CustomCenterButton onPress={props.onPress} />
           ),
@@ -166,7 +164,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.white,
   },
   micButtonListening: {
-    backgroundColor: COLORS.danger, // Pulsing Red when recording voice
+    backgroundColor: COLORS.danger,
   },
 });
 

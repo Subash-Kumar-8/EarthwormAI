@@ -5,9 +5,9 @@ import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 
 export const Badge = ({
   label,
-  variant = 'success', // 'success' | 'warning' | 'danger' | 'info' | 'accent' | 'neutral'
+  variant = 'success',
   icon,
-  size = 'md', // 'sm' | 'md'
+  size = 'md',
   style,
   textStyle,
 }) => {

@@ -1,19 +1,88 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import ScreenWrapper from '../components/ScreenWrapper';
-import { MARKET_CROPS } from '../constants/mockData';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { Alert } from "react-native";
 
 export const MarketPricesScreen = ({ navigation }) => {
   const [selectedCategory, setSelectedCategory] = useState('Food Crops');
   const [searchQuery, setSearchQuery] = useState('');
-
-  const filteredCrops = MARKET_CROPS.filter((c) => {
-    const matchesCategory = selectedCategory === 'All' || c.category === selectedCategory;
-    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+  const [filterType, setFilterType] = useState("All");
+  const [marketData, setMarketData] = useState({
+    foodCrops: [],
+    cashCrops: [],
   });
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchMarketPrices();
+  }, []);
+
+  const fetchMarketPrices = async () => {
+    try {
+      const response = await fetch(
+        "http://192.168.137.198:3001/api/market"
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        setMarketData({
+          foodCrops: data.foodCrops,
+          cashCrops: data.cashCrops,
+        });
+      }
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const crops =
+    selectedCategory === "Food Crops"
+      ? marketData.foodCrops
+      : marketData.cashCrops;
+
+    const filteredCrops = crops.filter((crop) => {
+      const matchesSearch = crop.name
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+      const matchesFilter =
+        filterType === "All"
+          ? true
+          : filterType === "Increased"
+          ? crop.changeType === "up"
+          : crop.changeType === "down";
+      return matchesSearch && matchesFilter;
+    });
+
+    const openFilter = () => {
+      Alert.alert(
+        "Filter Market Prices",
+        "Choose one",
+        [
+          {
+            text: "All",
+            onPress: () => setFilterType("All")
+          },
+          {
+            text: "Increased",
+            onPress: () => setFilterType("Increased")
+          },
+          {
+            text: "Decreased",
+            onPress: () => setFilterType("Decreased")
+          },
+          {
+            text: "Cancel",
+            style: "cancel"
+          }
+        ]
+      );
+    };
 
   return (
     <ScreenWrapper>
@@ -24,14 +93,27 @@ export const MarketPricesScreen = ({ navigation }) => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Market Prices</Text>
       </View>
-
+      {loading && (
+        <ScreenWrapper>
+          <View
+            style={{
+              flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Text>Loading Market Prices...</Text>
+            </View>
+          </ScreenWrapper>
+        )
+      }
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Title & Filter Button Row */}
         <View style={styles.titleFilterRow}>
           <Text style={styles.pageTitle}>Market Prices</Text>
-          <TouchableOpacity activeOpacity={0.8} style={styles.filterPillBtn}>
+          <TouchableOpacity activeOpacity={0.8} style={styles.filterPillBtn} onPress={openFilter}>
             <MaterialCommunityIcons name="tune-variant" size={16} color={COLORS.text} style={{ marginRight: 4 }} />
-            <Text style={styles.filterPillText}>Filter</Text>
+            <Text style={styles.filterPillText}>{filterType}</Text>
           </TouchableOpacity>
         </View>
 
@@ -75,20 +157,39 @@ export const MarketPricesScreen = ({ navigation }) => {
             <View key={item.id} style={styles.cropCardItem}>
               <Text style={styles.cropName}>{item.name}</Text>
               <View style={styles.cropRightCol}>
-                <Text style={styles.cropPriceText}>{item.price}</Text>
+                <Text style={styles.cropPriceText}>₹{item.todayPrice} ({item.unit})</Text>
                 <View
                   style={[
                     styles.changeBadge,
-                    { backgroundColor: item.isPositive ? COLORS.primaryLight : COLORS.dangerLight },
+                    {
+                      backgroundColor:
+                        item.changeType === "up"
+                          ? COLORS.primaryLight
+                          : item.changeType === "down"
+                          ? COLORS.dangerLight
+                          : "#EEEEEE",
+                    }
                   ]}
                 >
                   <Text
                     style={[
                       styles.changeBadgeText,
-                      { color: item.isPositive ? COLORS.primary : COLORS.danger },
+                      {
+                        color:
+                          item.changeType === "up"
+                            ? COLORS.primary
+                            : item.changeType === "down"
+                            ? COLORS.danger
+                            : COLORS.textSecondary,
+                      }
                     ]}
                   >
-                    {item.change}
+                    {item.changeType === "up"
+                      ? `▲ ₹${item.change}`
+                      : item.changeType === "down"
+                      ? `▼ ₹${Math.abs(item.change)}`
+                      : "No Change"
+                    }
                   </Text>
                 </View>
               </View>

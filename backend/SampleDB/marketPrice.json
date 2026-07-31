@@ -1,0 +1,286 @@
+{
+  "foodCrops": [
+    {
+      "id": 1,
+      "name": "Paddy",
+      "todayPrice": 2450,
+      "yesterdayPrice": 2410,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 2,
+      "name": "Wheat",
+      "todayPrice": 2675,
+      "yesterdayPrice": 2650,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 3,
+      "name": "Maize",
+      "todayPrice": 2180,
+      "yesterdayPrice": 2200,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 4,
+      "name": "Ragi",
+      "todayPrice": 3600,
+      "yesterdayPrice": 3550,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 5,
+      "name": "Jowar",
+      "todayPrice": 2950,
+      "yesterdayPrice": 2910,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 6,
+      "name": "Bajra",
+      "todayPrice": 2550,
+      "yesterdayPrice": 2535,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 7,
+      "name": "Foxtail Millet",
+      "todayPrice": 4300,
+      "yesterdayPrice": 4250,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 8,
+      "name": "Little Millet",
+      "todayPrice": 4600,
+      "yesterdayPrice": 4540,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 9,
+      "name": "Kodo Millet",
+      "todayPrice": 4450,
+      "yesterdayPrice": 4400,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 10,
+      "name": "Barnyard Millet",
+      "todayPrice": 4850,
+      "yesterdayPrice": 4790,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 11,
+      "name": "Green Gram",
+      "todayPrice": 7200,
+      "yesterdayPrice": 7150,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 12,
+      "name": "Black Gram",
+      "todayPrice": 7550,
+      "yesterdayPrice": 7480,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 13,
+      "name": "Red Gram",
+      "todayPrice": 7900,
+      "yesterdayPrice": 7820,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 14,
+      "name": "Bengal Gram",
+      "todayPrice": 6200,
+      "yesterdayPrice": 6180,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 15,
+      "name": "Horse Gram",
+      "todayPrice": 5900,
+      "yesterdayPrice": 5860,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 16,
+      "name": "Cowpea",
+      "todayPrice": 5400,
+      "yesterdayPrice": 5360,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 17,
+      "name": "Soybean",
+      "todayPrice": 4650,
+      "yesterdayPrice": 4700,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 18,
+      "name": "Groundnut",
+      "todayPrice": 6850,
+      "yesterdayPrice": 6900,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 19,
+      "name": "Field Bean",
+      "todayPrice": 5650,
+      "yesterdayPrice": 5600,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 20,
+      "name": "Rajma",
+      "todayPrice": 8450,
+      "yesterdayPrice": 8400,
+      "unit": "₹/Quintal"
+    }
+  ],
+  "cashCrops": [
+    {
+      "id": 101,
+      "name": "Cotton",
+      "todayPrice": 7600,
+      "yesterdayPrice": 7480,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 102,
+      "name": "Sugarcane",
+      "todayPrice": 355,
+      "yesterdayPrice": 350,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 103,
+      "name": "Turmeric",
+      "todayPrice": 13200,
+      "yesterdayPrice": 13450,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 104,
+      "name": "Coconut",
+      "todayPrice": 4100,
+      "yesterdayPrice": 4050,
+      "unit": "₹/1000 Nuts"
+    },
+    {
+      "id": 105,
+      "name": "Tea",
+      "todayPrice": 24500,
+      "yesterdayPrice": 24300,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 106,
+      "name": "Coffee",
+      "todayPrice": 18200,
+      "yesterdayPrice": 18050,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 107,
+      "name": "Cardamom",
+      "todayPrice": 128500,
+      "yesterdayPrice": 127800,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 108,
+      "name": "Black Pepper",
+      "todayPrice": 67500,
+      "yesterdayPrice": 67100,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 109,
+      "name": "Arecanut",
+      "todayPrice": 61200,
+      "yesterdayPrice": 61500,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 110,
+      "name": "Rubber",
+      "todayPrice": 18800,
+      "yesterdayPrice": 18650,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 111,
+      "name": "Cashew",
+      "todayPrice": 15200,
+      "yesterdayPrice": 15000,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 112,
+      "name": "Cocoa",
+      "todayPrice": 28200,
+      "yesterdayPrice": 27950,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 113,
+      "name": "Chilli",
+      "todayPrice": 12850,
+      "yesterdayPrice": 13020,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 114,
+      "name": "Onion",
+      "todayPrice": 2450,
+      "yesterdayPrice": 2520,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 115,
+      "name": "Garlic",
+      "todayPrice": 8450,
+      "yesterdayPrice": 8380,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 116,
+      "name": "Tomato",
+      "todayPrice": 1850,
+      "yesterdayPrice": 1760,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 117,
+      "name": "Potato",
+      "todayPrice": 2120,
+      "yesterdayPrice": 2150,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 118,
+      "name": "Banana",
+      "todayPrice": 2750,
+      "yesterdayPrice": 2700,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 119,
+      "name": "Mango",
+      "todayPrice": 5100,
+      "yesterdayPrice": 4950,
+      "unit": "₹/Quintal"
+    },
+    {
+      "id": 120,
+      "name": "Sunflower",
+      "todayPrice": 5980,
+      "yesterdayPrice": 5900,
+      "unit": "₹/Quintal"
+    }
+  ]
+}

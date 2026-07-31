@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import bodyParser from "body-parser";
 import agriData from "./SampleDB/agriShop.json" with { type: "json" };
+import marketPrices from "./SampleDB/marketPrice.json" with { type: "json" };
 import axios from "axios";
 
 dotenv.config();
@@ -184,4 +185,35 @@ app.get("/api/weather/forecast", async (req, res) => {
             message: "Unable to fetch forecast data."
         });
     }
+});
+
+app.get("/api/market", (req, res) => {
+  const foodCrops = marketPrices.foodCrops.map(crop => ({
+    ...crop,
+    change: crop.todayPrice - crop.yesterdayPrice,
+    changeType:
+      crop.todayPrice > crop.yesterdayPrice
+        ? "up"
+        : crop.todayPrice < crop.yesterdayPrice
+        ? "down"
+        : "same"
+  }));
+
+  const cashCrops = marketPrices.cashCrops.map(crop => ({
+    ...crop,
+    change: crop.todayPrice - crop.yesterdayPrice,
+    changeType:
+      crop.todayPrice > crop.yesterdayPrice
+        ? "up"
+        : crop.todayPrice < crop.yesterdayPrice
+        ? "down"
+        : "same"
+  }));
+
+  res.json({
+    success: true,
+    lastUpdated: new Date().toISOString().split("T")[0],
+    foodCrops,
+    cashCrops
+  });
 });

@@ -1,0 +1,152 @@
+[
+  {
+    "name": "Sri Murugan Agro Centre",
+    "category": "Fertilizer Shop",
+    "address": "Cantonment, Tiruchirappalli",
+    "district": "Tiruchirappalli",
+    "state": "Tamil Nadu",
+    "phone": "9876543210",
+    "latitude": 10.7908,
+    "longitude": 78.7056
+  },
+  {
+    "name": "Green Seeds & Fertilizers",
+    "category": "Seed Dealer",
+    "address": "Thillai Nagar, Tiruchirappalli",
+    "district": "Tiruchirappalli",
+    "state": "Tamil Nadu",
+    "phone": "9876543211",
+    "latitude": 10.7862,
+    "longitude": 78.6991
+  },
+  {
+    "name": "Cauvery Agro Inputs",
+    "category": "Pesticide Shop",
+    "address": "Srirangam, Tiruchirappalli",
+    "district": "Tiruchirappalli",
+    "state": "Tamil Nadu",
+    "phone": "9876543212",
+    "latitude": 10.8617,
+    "longitude": 78.6938
+  },
+  {
+    "name": "Agri Care Centre",
+    "category": "Agro Centre",
+    "address": "Woraiyur, Tiruchirappalli",
+    "district": "Tiruchirappalli",
+    "state": "Tamil Nadu",
+    "phone": "9876543213",
+    "latitude": 10.8272,
+    "longitude": 78.6826
+  },
+  {
+    "name": "Farm Fresh Nursery",
+    "category": "Nursery",
+    "address": "KK Nagar, Tiruchirappalli",
+    "district": "Tiruchirappalli",
+    "state": "Tamil Nadu",
+    "phone": "9876543214",
+    "latitude": 10.8065,
+    "longitude": 78.6848
+  },
+  {
+    "name": "Mahindra Tractor Point",
+    "category": "Tractor Dealer",
+    "address": "Pudukkottai Road, Tiruchirappalli",
+    "district": "Tiruchirappalli",
+    "state": "Tamil Nadu",
+    "phone": "9876543215",
+    "latitude": 10.7926,
+    "longitude": 78.7241
+  },
+  {
+    "name": "Agri Machinery Hub",
+    "category": "Farm Machinery",
+    "address": "Dindigul Road, Tiruchirappalli",
+    "district": "Tiruchirappalli",
+    "state": "Tamil Nadu",
+    "phone": "9876543216",
+    "latitude": 10.7994,
+    "longitude": 78.7093
+  },
+  {
+    "name": "Delta Agro Mart",
+    "category": "Fertilizer Shop",
+    "address": "Medical College Road, Thanjavur",
+    "district": "Thanjavur",
+    "state": "Tamil Nadu",
+    "phone": "9876543217",
+    "latitude": 10.7869,
+    "longitude": 79.1378
+  },
+  {
+    "name": "Kaveri Seeds",
+    "category": "Seed Dealer",
+    "address": "Old Bus Stand, Thanjavur",
+    "district": "Thanjavur",
+    "state": "Tamil Nadu",
+    "phone": "9876543218",
+    "latitude": 10.7860,
+    "longitude": 79.1392
+  },
+  {
+    "name": "Salem Agro World",
+    "category": "Agro Centre",
+    "address": "Fairlands, Salem",
+    "district": "Salem",
+    "state": "Tamil Nadu",
+    "phone": "9876543219",
+    "latitude": 11.6643,
+    "longitude": 78.1460
+  },
+  {
+    "name": "Erode Fertilizers",
+    "category": "Fertilizer Shop",
+    "address": "Perundurai Road, Erode",
+    "district": "Erode",
+    "state": "Tamil Nadu",
+    "phone": "9876543220",
+    "latitude": 11.3410,
+    "longitude": 77.7172
+  },
+  {
+    "name": "Coimbatore Agro Tech",
+    "category": "Farm Machinery",
+    "address": "Gandhipuram, Coimbatore",
+    "district": "Coimbatore",
+    "state": "Tamil Nadu",
+    "phone": "9876543221",
+    "latitude": 11.0173,
+    "longitude": 76.9663
+  },
+  {
+    "name": "Madurai Agro Services",
+    "category": "Pesticide Shop",
+    "address": "Anna Nagar, Madurai",
+    "district": "Madurai",
+    "state": "Tamil Nadu",
+    "phone": "9876543222",
+    "latitude": 9.9252,
+    "longitude": 78.1198
+  },
+  {
+    "name": "Theni Farm Care",
+    "category": "Seed Dealer",
+    "address": "Collector Office Road, Theni",
+    "district": "Theni",
+    "state": "Tamil Nadu",
+    "phone": "9876543223",
+    "latitude": 10.0104,
+    "longitude": 77.4768
+  },
+  {
+    "name": "Namakkal Agri Mart",
+    "category": "Agro Centre",
+    "address": "Mohanur Road, Namakkal",
+    "district": "Namakkal",
+    "state": "Tamil Nadu",
+    "phone": "9876543224",
+    "latitude": 11.2194,
+    "longitude": 78.1672
+  }
+]

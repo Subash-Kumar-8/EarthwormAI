@@ -76,7 +76,7 @@ const VoiceNotePlayer = ({ audioUri, durationSeconds = 3 }) => {
   );
 };
 
-export const AIAssistantScreen = ({ navigation }) => {
+export const AIAssistantScreen = ({ navigation, route }) => {
   const [messages, setMessages] = useState(CHAT_MESSAGES_INITIAL);
   const [inputText, setInputText] = useState('');
   const [selectedImageUri, setSelectedImageUri] = useState(null); // Captured Camera Image
@@ -85,7 +85,18 @@ export const AIAssistantScreen = ({ navigation }) => {
   const flatListRef = useRef(null);
   const { isListening, recordingDuration, stopListening, setOnTranscribedCallback } = useVoiceContext();
 
-  // 1. Universal Native Keyboard Event Listener for Android & iOS
+  // Handle incoming confirmed leaf photo from DiseaseDetectionScreen
+  useEffect(() => {
+    if (route?.params?.attachedImage) {
+      const confirmedPhoto = route.params.attachedImage;
+      handleSendQuery(
+        { attachedImage: confirmedPhoto, text: 'Analyze attached crop photo for disease diagnosis and treatment' },
+        false
+      );
+    }
+  }, [route?.params?.attachedImage]);
+
+  // Universal Native Keyboard Event Listener for Android & iOS
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
@@ -104,7 +115,7 @@ export const AIAssistantScreen = ({ navigation }) => {
     };
   }, []);
 
-  // 2. Direct Camera Capture Handler (allowsEditing: false to bypass black cropper step)
+  // Direct Camera Capture Handler
   const handleTakePicture = async () => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -267,7 +278,7 @@ export const AIAssistantScreen = ({ navigation }) => {
               />
             </TouchableOpacity>
 
-            {/* INLINE Photo Attachment Badge (Consumes ZERO extra vertical height!) */}
+            {/* INLINE Photo Attachment Badge */}
             {selectedImageUri && (
               <View style={styles.inlinePhotoTag}>
                 <Image source={{ uri: selectedImageUri }} style={styles.inlineThumbnail} />

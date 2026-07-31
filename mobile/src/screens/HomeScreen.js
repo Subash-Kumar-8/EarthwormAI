@@ -10,13 +10,13 @@ import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme
 
 export const HomeScreen = ({ navigation }) => {
   const [locationName, setLocationName] = useState(HOME_WEATHER.location);
-  const [locationCoords, setLocationCoords] = useState(null); // Stores { latitude, longitude }
+  const [locationCoords, setLocationCoords] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [nearbyShops, setNearbyShops] = useState([]);
 
   const handleUpdateLocation = async () => {
     setIsLocating(true);
     try {
-      // 1. Request GPS location permission from farmer
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== 'granted') {
@@ -28,27 +28,31 @@ export const HomeScreen = ({ navigation }) => {
         setIsLocating(false);
         return;
       }
-
-      // 2. Fetch current GPS position
       const currentPos = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
 
       const { latitude, longitude } = currentPos.coords;
-
-      // 3. Store latitude & longitude in variable state
       const coordsObj = { latitude, longitude };
       setLocationCoords(coordsObj);
 
-      // 4. Log latitude and longitude to developer console
+      const response = await fetch(
+        `http://192.168.137.198:3001/api/nearby/agri-shops?lat=${latitude}&lon=${longitude}`
+      );
+
+      const shops = await response.json();
+
+      setNearbyShops(shops);
+
+      console.log(shops);
+
       console.log('[GPS Location Updated] Latitude:', latitude, 'Longitude:', longitude);
 
-      // 5. Reverse Geocode to get City / District / State
       try {
         const reverseGeocode = await Location.reverseGeocodeAsync({ latitude, longitude });
         if (reverseGeocode && reverseGeocode.length > 0) {
           const place = reverseGeocode[0];
-          const city = place.city || place.subregion || place.district || 'Punjab';
+          const city = place.city || place.subregion || place.district || 'Null';
           const region = place.region || place.country || 'India';
           const formattedLocation = `${city}, ${region} (${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°)`;
           setLocationName(formattedLocation);
@@ -78,7 +82,6 @@ export const HomeScreen = ({ navigation }) => {
 
   return (
     <ScreenWrapper withPadding={false} backgroundColor={COLORS.primary}>
-      {/* Dashboard Top Header matching Figma */}
       <View style={styles.topHeader}>
         <View style={styles.logoTitleRow}>
           <EarthwormLogo size={36} badge={true} />
@@ -86,10 +89,8 @@ export const HomeScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Screen Body */}
       <View style={styles.bodyContainer}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          {/* Today's Weather Card (Cloud Weather Icon #FFF2EC from Figma) */}
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => navigation.navigate('WeatherTab')}
@@ -105,8 +106,6 @@ export const HomeScreen = ({ navigation }) => {
               </View>
             </View>
           </TouchableOpacity>
-
-          {/* Camera Crop Scanner Card on Dashboard */}
           <TouchableOpacity
             activeOpacity={0.88}
             style={[styles.cameraScanCard, SHADOWS.small]}
@@ -123,8 +122,6 @@ export const HomeScreen = ({ navigation }) => {
               <MaterialCommunityIcons name="arrow-right" size={20} color={COLORS.primary} />
             </View>
           </TouchableOpacity>
-
-          {/* Update Location Card with GPS Permission Request & Coordinates Storage */}
           <Card variant="flat" style={styles.locationCard} padding={SPACING.md}>
             <View style={styles.locationHeaderRow}>
               <Text style={styles.locationTitle}>Update Location</Text>
@@ -154,21 +151,33 @@ export const HomeScreen = ({ navigation }) => {
               </View>
             )}
           </Card>
-
-          {/* Fertilizer Diagnostics Container (Orange Card from Figma) */}
           <View style={styles.diagnosticsContainer}>
             <Text style={styles.diagnosticsHeaderTitle}>Fertilizer Diagnostics for you</Text>
             <View style={styles.diagnosticsList}>
-              {FERTILIZER_STORES.map((store, index) => (
-                <View key={index} style={styles.storeItemBox}>
-                  <MaterialCommunityIcons name="store-outline" size={18} color={COLORS.primaryDark} />
-                  <View style={styles.storeTextCol}>
-                    <Text style={styles.storeNameText}>{store.name}</Text>
-                    <Text style={styles.storeDescText}>{store.desc}</Text>
-                  </View>
-                  <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textMuted} />
-                </View>
-              ))}
+              {nearbyShops.length === 0 ? (
+                <Text>No nearby fertilizer shops found.</Text>
+              ) : (
+                  nearbyShops.map((shop, index) => (
+                      <View key={index} style={styles.storeItemBox}>
+                          <MaterialCommunityIcons
+                              name="store-outline"
+                              size={18}
+                              color={COLORS.primaryDark}
+                          />
+                          <View style={styles.storeTextCol}>
+                              <Text style={styles.storeNameText}>
+                                  {shop.name}
+                              </Text>
+                              <Text style={styles.storeDescText}>
+                                  {shop.address}
+                              </Text>
+                              <Text style={styles.storeDescText}>
+                                  {shop.distance} km away
+                              </Text>
+                          </View>
+                      </View>
+                  ))
+              )}
             </View>
           </View>
         </ScrollView>

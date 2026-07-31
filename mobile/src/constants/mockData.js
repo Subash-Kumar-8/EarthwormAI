@@ -4,9 +4,9 @@ export const USER_PROFILE = {
   name: 'Subash',
   phone: '+91 98765 43210',
   email: 'subash@earthworm.ai',
-  location: 'Punjab, India',
-  district: 'Ludhiana',
-  state: 'Punjab',
+  location: 'Unknown, India',
+  district: 'Unknown',
+  state: 'Unknown',
   farmSize: '5 Acres',
   soilType: 'Loamy Soil',
   primaryCrops: ['Tomato', 'Potato', 'Rice', 'SugarCane'],
@@ -15,7 +15,7 @@ export const USER_PROFILE = {
 };
 
 export const HOME_WEATHER = {
-  location: 'Punjab, India',
+  location: 'Unknown, India',
   temp: 30,
   feelsLike: 32,
   condition: 'Sunny',

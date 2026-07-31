@@ -8,8 +8,43 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import { FERTILIZER_STORES, HOME_WEATHER } from '../constants/mockData';
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
 
+const getWeatherIcon = (condition) => {
+  switch (condition?.toLowerCase()) {
+    case "clear":
+      return "weather-sunny";
+
+    case "clouds":
+      return "weather-cloudy";
+
+    case "rain":
+      return "weather-rainy";
+
+    case "drizzle":
+      return "weather-partly-rainy";
+
+    case "thunderstorm":
+      return "weather-lightning-rainy";
+
+    case "snow":
+      return "weather-snowy";
+
+    case "mist":
+    case "fog":
+    case "haze":
+      return "weather-fog";
+
+    default:
+      return "weather-partly-cloudy";
+  }
+};
+
 export const HomeScreen = ({ navigation }) => {
   const [locationName, setLocationName] = useState(HOME_WEATHER.location);
+  const [weather, setWeather] = useState({
+    temp: HOME_WEATHER.temp,
+    condition: HOME_WEATHER.condition,
+    description: "",
+  });
   const [locationCoords, setLocationCoords] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
   const [nearbyShops, setNearbyShops] = useState([]);
@@ -43,6 +78,19 @@ export const HomeScreen = ({ navigation }) => {
       const shops = await response.json();
 
       setNearbyShops(shops);
+      
+      const weatherResponse = await fetch(
+        `http://192.168.137.198:3001/api/weather?lat=${latitude}&lon=${longitude}`
+      );
+
+      const weatherData = await weatherResponse.json();
+        if (weatherData.success) {
+          setWeather({
+            temp: Math.round(weatherData.weather.temperature),
+            condition: weatherData.weather.condition,
+            description: weatherData.weather.description,
+          });
+        }
 
       console.log(shops);
 
@@ -52,7 +100,7 @@ export const HomeScreen = ({ navigation }) => {
         const reverseGeocode = await Location.reverseGeocodeAsync({ latitude, longitude });
         if (reverseGeocode && reverseGeocode.length > 0) {
           const place = reverseGeocode[0];
-          const city = place.city || place.subregion || place.district || 'Null';
+          const city = place.city || place.subregion || place.district || 'Unknown';
           const region = place.region || place.country || 'India';
           const formattedLocation = `${city}, ${region} (${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°)`;
           setLocationName(formattedLocation);
@@ -98,11 +146,11 @@ export const HomeScreen = ({ navigation }) => {
             <View style={[styles.weatherCard, SHADOWS.small]}>
               <View style={styles.weatherTextCol}>
                 <Text style={styles.weatherSubtitle}>Today's Weather</Text>
-                <Text style={styles.weatherCondition}>{HOME_WEATHER.condition}</Text>
+                <Text style={styles.weatherCondition}>{weather.condition}</Text>
               </View>
               <View style={styles.weatherTempRow}>
-                <Text style={styles.weatherTempText}>{HOME_WEATHER.temp}°</Text>
-                <MaterialCommunityIcons name="weather-partly-cloudy" size={40} color="#FF9800" />
+                <Text style={styles.weatherTempText}>{weather.temp}°</Text>
+                <MaterialCommunityIcons name={getWeatherIcon(weather.condition)} size={40} color="#FF9800" />
               </View>
             </View>
           </TouchableOpacity>
@@ -152,7 +200,7 @@ export const HomeScreen = ({ navigation }) => {
             )}
           </Card>
           <View style={styles.diagnosticsContainer}>
-            <Text style={styles.diagnosticsHeaderTitle}>Fertilizer Diagnostics for you</Text>
+            <Text style={styles.diagnosticsHeaderTitle}>Fertilizer Shops Near You</Text>
             <View style={styles.diagnosticsList}>
               {nearbyShops.length === 0 ? (
                 <Text>No nearby fertilizer shops found.</Text>

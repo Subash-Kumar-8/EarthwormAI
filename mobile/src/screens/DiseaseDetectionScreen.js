@@ -1,46 +1,97 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Header from '../components/Header';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { DISEASE_DETECTION_SAMPLE } from '../constants/mockData';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
-import { cropService } from '../services/cropService';
+import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
 
 export const DiseaseDetectionScreen = ({ navigation }) => {
-  const [selectedImage, setSelectedImage] = useState(
-    'https://images.unsplash.com/photo-1591857177580-dc82b9ac4e1e?auto=format&fit=crop&w=600&q=80'
-  );
-  const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult] = useState(DISEASE_DETECTION_SAMPLE);
-  const [activeTab, setActiveTab] = useState('chemical'); // 'chemical' | 'organic' | 'preventive'
+  const [selectedImageUri, setSelectedImageUri] = useState(null);
+  const [result, setResult] = useState(null);
+  const [activeTab, setActiveTab] = useState('chemical');
 
-  const handleSimulateScan = async (source) => {
-    setAnalyzing(true);
-    setResult(null);
+  // 1. Launch Native Device Camera
+  const handleLaunchCamera = async () => {
     try {
-      const res = await cropService.diagnoseDiseaseImage(`mock://${source}_image.jpg`);
-      setResult(res);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setAnalyzing(false);
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Camera Permission Required',
+          'Earthworm AI requires camera access to scan crop leaves for disease detection.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: false, // Direct photo capture (OK / Use Photo)
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setSelectedImageUri(result.assets[0].uri);
+        setResult(DISEASE_DETECTION_SAMPLE);
+      }
+    } catch (err) {
+      console.error('Camera Launch Error:', err);
+      Alert.alert('Camera Error', 'Could not open device camera. Please try again.');
     }
+  };
+
+  // 2. Launch Photo Gallery Library
+  const handleLaunchGallery = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Gallery Permission Required',
+          'Earthworm AI requires photo library access to pick crop leaf images.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setSelectedImageUri(result.assets[0].uri);
+        setResult(DISEASE_DETECTION_SAMPLE);
+      }
+    } catch (err) {
+      console.error('Gallery Launch Error:', err);
+      Alert.alert('Gallery Error', 'Could not access photo gallery. Please try again.');
+    }
+  };
+
+  // 3. Confirm Photo & Redirect directly to AI Chat Assistant
+  const handleConfirmAndGoToChat = () => {
+    if (!selectedImageUri) return;
+    // Navigate straight to VoiceMicTab (AI Chat Assistant) with attached image payload!
+    navigation.navigate('MainApp', {
+      screen: 'VoiceMicTab',
+      params: { attachedImage: selectedImageUri },
+    });
   };
 
   return (
     <ScreenWrapper>
       <Header
-        title="Crop Disease Detection"
+        title="Crop Disease Scanner"
         subtitle="AI Vision Diagnostic Tool"
         onBackPress={() => navigation.goBack()}
       />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Action Buttons Row: Camera & Upload */}
+        {/* Action Buttons Row: Camera & Gallery */}
         <View style={styles.actionButtonsRow}>
           <Button
             title="Take Camera Photo"
@@ -48,48 +99,67 @@ export const DiseaseDetectionScreen = ({ navigation }) => {
             variant="primary"
             size="md"
             style={styles.actionBtn}
-            onPress={() => handleSimulateScan('camera')}
+            onPress={handleLaunchCamera}
           />
           <View style={{ width: 12 }} />
           <Button
-            title="Upload Gallery Image"
+            title="Choose from Gallery"
             icon="image-plus"
             variant="outline"
             size="md"
             style={styles.actionBtn}
-            onPress={() => handleSimulateScan('gallery')}
+            onPress={handleLaunchGallery}
           />
         </View>
 
-        {/* Preview Frame with Scan Overlay */}
+        {/* Photo Preview & Confirmation Frame (Tick ✔ / Retake ✖) */}
         <Card variant="elevated" style={styles.previewCard} padding={0}>
           <View style={styles.imageContainer}>
-            {/* Styled leaf scan placeholder image view */}
-            <View style={styles.mockLeafView}>
-              <MaterialCommunityIcons name="leaf" size={100} color={COLORS.primary} />
-              <Text style={styles.mockLeafText}>Sample Affected Crop Leaf</Text>
-            </View>
+            {selectedImageUri ? (
+              <Image source={{ uri: selectedImageUri }} style={styles.capturedPhoto} resizeMode="cover" />
+            ) : (
+              <View style={styles.mockLeafView}>
+                <MaterialCommunityIcons name="camera-iris" size={80} color={COLORS.primary} />
+                <Text style={styles.mockLeafText}>Tap Camera or Gallery button above to scan leaf</Text>
+              </View>
+            )}
 
             {/* Scan Framing Corner Overlays */}
             <View style={[styles.corner, styles.topLeft]} />
             <View style={[styles.corner, styles.topRight]} />
             <View style={[styles.corner, styles.bottomLeft]} />
             <View style={[styles.corner, styles.bottomRight]} />
-
-            {analyzing && (
-              <View style={styles.analyzingOverlay}>
-                <ActivityIndicator size="large" color={COLORS.accent} />
-                <Text style={styles.analyzingText}>AI analyzing leaf symptoms...</Text>
-              </View>
-            )}
           </View>
 
-          <View style={styles.previewFooter}>
-            <MaterialCommunityIcons name="information-outline" size={16} color={COLORS.textSecondary} />
-            <Text style={styles.previewFooterText}>
-              Ensure leaf is well-lit & in clear focus for best accuracy
-            </Text>
-          </View>
+          {/* User Confirmation Buttons: Tick (✔) & Retake (✖) */}
+          {selectedImageUri ? (
+            <View style={styles.confirmActionRow}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.retakeBtn}
+                onPress={() => setSelectedImageUri(null)}
+              >
+                <MaterialCommunityIcons name="close" size={24} color={COLORS.white} />
+                <Text style={styles.retakeBtnText}>Retake (✖)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={[styles.confirmBtn, SHADOWS.medium]}
+                onPress={handleConfirmAndGoToChat}
+              >
+                <MaterialCommunityIcons name="check-bold" size={24} color={COLORS.white} />
+                <Text style={styles.confirmBtnText}>Confirm (✔) & Ask AI</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.previewFooter}>
+              <MaterialCommunityIcons name="information-outline" size={16} color={COLORS.textSecondary} />
+              <Text style={styles.previewFooterText}>
+                Ensure leaf is well-lit & in clear focus for best accuracy
+              </Text>
+            </View>
+          )}
         </Card>
 
         {/* Diagnosis Results Card */}
@@ -98,7 +168,7 @@ export const DiseaseDetectionScreen = ({ navigation }) => {
             <Card variant="elevated" accentColor={COLORS.danger} padding={SPACING.lg}>
               <View style={styles.resultHeader}>
                 <View style={{ flex: 1 }}>
-                  <Badge label="Diagnostic Result" variant="danger" size="sm" />
+                  <Badge label="Diagnostic Preview" variant="danger" size="sm" />
                   <Text style={styles.diseaseTitle}>{result.diseaseName}</Text>
                   <Text style={styles.scientificName}>{result.scientificName}</Text>
                 </View>
@@ -108,117 +178,23 @@ export const DiseaseDetectionScreen = ({ navigation }) => {
                 </View>
               </View>
 
-              {/* Progress Bar for Confidence */}
-              <View style={styles.progressTrack}>
-                <View style={[styles.progressBar, { width: `${result.confidence}%` }]} />
-              </View>
-
-              <View style={styles.metaRow}>
-                <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>Severity Level</Text>
-                  <Badge label={result.severity} variant="warning" size="sm" />
-                </View>
-                <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>Affected Region</Text>
-                  <Text style={styles.metaValue}>{result.affectedArea}</Text>
-                </View>
-              </View>
-
-              {/* Symptoms Checklist */}
-              <Text style={styles.symptomsHeader}>Key Identified Symptoms:</Text>
+              <Text style={styles.symptomsHeader}>Identified Symptoms:</Text>
               {result.symptoms.map((symptom, idx) => (
                 <View key={idx} style={styles.symptomRow}>
                   <MaterialCommunityIcons name="alert-circle-outline" size={16} color={COLORS.warning} />
                   <Text style={styles.symptomText}>{symptom}</Text>
                 </View>
               ))}
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={styles.chatRedirectCardBtn}
+                onPress={handleConfirmAndGoToChat}
+              >
+                <MaterialCommunityIcons name="forum" size={20} color={COLORS.white} />
+                <Text style={styles.chatRedirectCardText}>Get Full AI ChatGPT Treatment Guide (✔)</Text>
+              </TouchableOpacity>
             </Card>
-
-            {/* Treatment Recommendations Section */}
-            <View style={styles.treatmentHeader}>
-              <Text style={styles.treatmentSectionTitle}>Recommended Treatment</Text>
-              <Text style={styles.treatmentSub}>Verified by Agricultural Scientists</Text>
-            </View>
-
-            {/* Treatment Segmented Tab Switcher */}
-            <View style={styles.tabContainer}>
-              <TouchableOpacity
-                style={[styles.tab, activeTab === 'chemical' && styles.activeTab]}
-                onPress={() => setActiveTab('chemical')}
-              >
-                <MaterialCommunityIcons
-                  name="flask"
-                  size={16}
-                  color={activeTab === 'chemical' ? COLORS.white : COLORS.text}
-                />
-                <Text style={[styles.tabText, activeTab === 'chemical' && styles.activeTabText]}>
-                  Chemical
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.tab, activeTab === 'organic' && styles.activeTab]}
-                onPress={() => setActiveTab('organic')}
-              >
-                <MaterialCommunityIcons
-                  name="sprout"
-                  size={16}
-                  color={activeTab === 'organic' ? COLORS.white : COLORS.text}
-                />
-                <Text style={[styles.tabText, activeTab === 'organic' && styles.activeTabText]}>
-                  Organic
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.tab, activeTab === 'preventive' && styles.activeTab]}
-                onPress={() => setActiveTab('preventive')}
-              >
-                <MaterialCommunityIcons
-                  name="shield-check"
-                  size={16}
-                  color={activeTab === 'preventive' ? COLORS.white : COLORS.text}
-                />
-                <Text style={[styles.tabText, activeTab === 'preventive' && styles.activeTabText]}>
-                  Preventive
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Treatment Items */}
-            {activeTab === 'chemical' &&
-              result.treatments.chemical.map((item, idx) => (
-                <Card key={idx} variant="outlined" style={styles.treatmentCard} padding={SPACING.md}>
-                  <View style={styles.treatmentTitleRow}>
-                    <MaterialCommunityIcons name="check-circle" size={20} color={COLORS.primary} />
-                    <Text style={styles.treatmentName}>{item.name}</Text>
-                  </View>
-                  <Text style={styles.treatmentDetail}>Dosage: {item.dosage}</Text>
-                  <Text style={styles.treatmentDetail}>Schedule: {item.schedule}</Text>
-                </Card>
-              ))}
-
-            {activeTab === 'organic' &&
-              result.treatments.organic.map((item, idx) => (
-                <Card key={idx} variant="outlined" style={styles.treatmentCard} padding={SPACING.md}>
-                  <View style={styles.treatmentTitleRow}>
-                    <MaterialCommunityIcons name="sprout" size={20} color={COLORS.secondary} />
-                    <Text style={styles.treatmentName}>{item.name}</Text>
-                  </View>
-                  <Text style={styles.treatmentDetail}>Dosage: {item.dosage}</Text>
-                  <Text style={styles.treatmentDetail}>Schedule: {item.schedule}</Text>
-                </Card>
-              ))}
-
-            {activeTab === 'preventive' &&
-              result.treatments.preventive.map((item, idx) => (
-                <Card key={idx} variant="outlined" style={styles.treatmentCard} padding={SPACING.md}>
-                  <View style={styles.treatmentTitleRow}>
-                    <MaterialCommunityIcons name="shield-check-outline" size={20} color={COLORS.info} />
-                    <Text style={styles.treatmentName}>{item}</Text>
-                  </View>
-                </Card>
-              ))}
           </View>
         )}
       </ScrollView>
@@ -242,21 +218,27 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   imageContainer: {
-    height: 220,
+    height: 240,
     backgroundColor: COLORS.surfaceVariant,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
+  capturedPhoto: {
+    width: '100%',
+    height: '100%',
+  },
   mockLeafView: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: SPACING.md,
   },
   mockLeafText: {
-    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontSize: TYPOGRAPHY.fontSize.xs + 1,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
     fontWeight: TYPOGRAPHY.fontWeight.medium,
+    textAlign: 'center',
   },
   corner: {
     position: 'absolute',
@@ -268,16 +250,42 @@ const styles = StyleSheet.create({
   topRight: { top: 12, right: 12, borderTopWidth: 4, borderRightWidth: 4 },
   bottomLeft: { bottom: 12, left: 12, borderBottomWidth: 4, borderLeftWidth: 4 },
   bottomRight: { bottom: 12, right: 12, borderBottomWidth: 4, borderRightWidth: 4 },
-  analyzingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: COLORS.overlay,
+  confirmActionRow: {
+    flexDirection: 'row',
+    padding: SPACING.sm,
+    backgroundColor: COLORS.white,
+  },
+  retakeBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: COLORS.danger,
+    paddingVertical: SPACING.xs + 4,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: RADIUS.md,
+    marginRight: 8,
   },
-  analyzingText: {
+  retakeBtnText: {
     color: COLORS.white,
-    marginTop: SPACING.xs,
     fontWeight: TYPOGRAPHY.fontWeight.bold,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    marginLeft: 4,
+  },
+  confirmBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.xs + 4,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: RADIUS.md,
+  },
+  confirmBtnText: {
+    color: COLORS.white,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    marginLeft: 6,
   },
   previewFooter: {
     flexDirection: 'row',
@@ -310,9 +318,9 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   confidenceCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     backgroundColor: COLORS.primaryLight,
     borderWidth: 2,
     borderColor: COLORS.primary,
@@ -320,51 +328,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   confidenceNumber: {
-    fontSize: TYPOGRAPHY.fontSize.md,
+    fontSize: TYPOGRAPHY.fontSize.sm + 1,
     fontWeight: TYPOGRAPHY.fontWeight.bold,
     color: COLORS.primary,
   },
   confidenceLabel: {
-    fontSize: 9,
+    fontSize: 8,
     color: COLORS.primaryDark,
     textTransform: 'uppercase',
-  },
-  progressTrack: {
-    height: 8,
-    backgroundColor: COLORS.surfaceVariant,
-    borderRadius: 4,
-    marginVertical: SPACING.md,
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: COLORS.primary,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.surfaceVariant,
-    padding: SPACING.sm,
-    borderRadius: RADIUS.sm,
-    marginBottom: SPACING.md,
-  },
-  metaItem: {
-    flex: 1,
-  },
-  metaLabel: {
-    fontSize: TYPOGRAPHY.fontSize.xs,
-    color: COLORS.textSecondary,
-    marginBottom: 2,
-  },
-  metaValue: {
-    fontSize: TYPOGRAPHY.fontSize.xs + 1,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-    color: COLORS.text,
   },
   symptomsHeader: {
     fontSize: TYPOGRAPHY.fontSize.sm,
     fontWeight: TYPOGRAPHY.fontWeight.bold,
     color: COLORS.text,
+    marginTop: SPACING.sm,
     marginBottom: SPACING.xs,
   },
   symptomRow: {
@@ -378,65 +355,20 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     flex: 1,
   },
-  treatmentHeader: {
-    marginTop: SPACING.lg,
-    marginBottom: SPACING.xs,
-  },
-  treatmentSectionTitle: {
-    fontSize: TYPOGRAPHY.fontSize.lg,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-    color: COLORS.text,
-  },
-  treatmentSub: {
-    fontSize: TYPOGRAPHY.fontSize.xs,
-    color: COLORS.textSecondary,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surfaceVariant,
-    borderRadius: RADIUS.md,
-    padding: 4,
-    marginVertical: SPACING.sm,
-  },
-  tab: {
-    flex: 1,
+  chatRedirectCardBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: SPACING.xs + 2,
-    borderRadius: RADIUS.sm,
-  },
-  activeTab: {
     backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.sm + 2,
+    marginTop: SPACING.md,
   },
-  tabText: {
-    fontSize: TYPOGRAPHY.fontSize.xs,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-    color: COLORS.text,
-    marginLeft: 4,
-  },
-  activeTabText: {
+  chatRedirectCardText: {
     color: COLORS.white,
-  },
-  treatmentCard: {
-    marginVertical: SPACING.xs,
-  },
-  treatmentTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  treatmentName: {
-    fontSize: TYPOGRAPHY.fontSize.sm,
     fontWeight: TYPOGRAPHY.fontWeight.bold,
-    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.xs + 1,
     marginLeft: 6,
-  },
-  treatmentDetail: {
-    fontSize: TYPOGRAPHY.fontSize.xs,
-    color: COLORS.textSecondary,
-    marginLeft: 26,
-    marginTop: 2,
   },
 });
 

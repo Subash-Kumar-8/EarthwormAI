@@ -1,7 +1,8 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Image, Keyboard, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AudioWave from '../components/AudioWave';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { CHAT_MESSAGES_INITIAL } from '../constants/mockData';
@@ -78,18 +79,71 @@ const VoiceNotePlayer = ({ audioUri, durationSeconds = 3 }) => {
 export const AIAssistantScreen = ({ navigation }) => {
   const [messages, setMessages] = useState(CHAT_MESSAGES_INITIAL);
   const [inputText, setInputText] = useState('');
+  const [selectedImageUri, setSelectedImageUri] = useState(null); // Captured Camera Image
   const [loading, setLoading] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0); // Universal Keyboard Offset
   const flatListRef = useRef(null);
   const { isListening, recordingDuration, stopListening, setOnTranscribedCallback } = useVoiceContext();
 
+  // 1. Universal Native Keyboard Event Listener for Android & iOS
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSubscription = Keyboard.addListener(showEvent, (e) => {
+      const height = e.endCoordinates ? e.endCoordinates.height : 300;
+      setKeyboardHeight(height);
+    });
+    const hideSubscription = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  // 2. Direct Camera Capture Handler (allowsEditing: false to bypass black cropper step)
+  const handleTakePicture = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Camera Permission Denied',
+          'Earthworm AI requires camera access to take leaf photos for crop diagnosis.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: false, // Bypasses black crop screen -> direct "OK / Use Photo"
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const imageUri = result.assets[0].uri;
+        setSelectedImageUri(imageUri);
+        console.log('[Camera Capture] Captured leaf photo directly:', imageUri);
+      }
+    } catch (err) {
+      console.error('Failed to take camera picture:', err);
+      Alert.alert('Camera Error', 'Could not access device camera. Please try again.');
+    }
+  };
+
   const handleSendQuery = async (queryPayload, isVoice = false) => {
     const textToSend = typeof queryPayload === 'string' ? queryPayload : queryPayload?.text;
-    if (!textToSend || !textToSend.trim()) return;
+    const currentAttachedImage = selectedImageUri || (typeof queryPayload === 'object' ? queryPayload.attachedImage : null);
+
+    if ((!textToSend || !textToSend.trim()) && !currentAttachedImage) return;
 
     const userMsg = {
       id: `msg-${Date.now()}`,
       sender: 'user',
-      text: textToSend,
+      text: textToSend || 'Analyzing attached crop photo...',
+      attachedImage: currentAttachedImage,
       isVoice: isVoice,
       audioUri: typeof queryPayload === 'object' ? queryPayload.audioUri : null,
       durationSeconds: typeof queryPayload === 'object' ? queryPayload.durationSeconds : 3,
@@ -98,10 +152,11 @@ export const AIAssistantScreen = ({ navigation }) => {
 
     setMessages((prev) => [...prev, userMsg]);
     setInputText('');
+    setSelectedImageUri(null); // Reset attachment preview
     setLoading(true);
 
     try {
-      const aiReply = await cropService.queryAIAssistant(textToSend);
+      const aiReply = await cropService.queryAIAssistant(textToSend || 'Analyze attached crop photo');
       setMessages((prev) => [...prev, aiReply]);
     } catch (e) {
       console.error(e);
@@ -134,6 +189,11 @@ export const AIAssistantScreen = ({ navigation }) => {
         )}
 
         <View style={[styles.bubble, isUser ? styles.userBubble : styles.aiBubble]}>
+          {/* Display User Attached Camera Photo in Chat Bubble */}
+          {item.attachedImage && (
+            <Image source={{ uri: item.attachedImage }} style={styles.chatAttachedImage} resizeMode="cover" />
+          )}
+
           {item.isVoice && (
             <View style={{ marginBottom: 4 }}>
               <VoiceNotePlayer audioUri={item.audioUri} durationSeconds={item.durationSeconds} />
@@ -145,38 +205,49 @@ export const AIAssistantScreen = ({ navigation }) => {
     );
   };
 
-  return (
-    <ScreenWrapper>
-      {/* Header matching Figma */}
-      <View style={styles.headerRow}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <MaterialCommunityIcons name="chevron-left" size={28} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI Chat Assistant</Text>
-      </View>
+  const isSendDisabled = (!inputText.trim() && !selectedImageUri) || loading;
 
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+  return (
+    <ScreenWrapper withPadding={false}>
+      <View
+        style={[
+          styles.mainWrapper,
+          {
+            paddingBottom: keyboardHeight > 0
+              ? (Platform.OS === 'ios' ? keyboardHeight - 20 : keyboardHeight - 10)
+              : 8,
+          },
+        ]}
       >
-        {/* Messages List */}
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderMessageItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.chatList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-        />
+        {/* Header matching Figma */}
+        <View style={styles.headerRow}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <MaterialCommunityIcons name="chevron-left" size={28} color={COLORS.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>AI Chat Assistant</Text>
+        </View>
+
+        {/* Messages List bounded in flex: 1 */}
+        <View style={styles.listFlexWrapper}>
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessageItem}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.chatList}
+            keyboardShouldPersistTaps="handled"
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          />
+        </View>
 
         {/* Animated Sound Wave Recording Banner ("Waving to catch your words") */}
         {isListening && (
           <View style={styles.recordingBanner}>
             <View style={styles.waveWrapper}>
-              <AudioWave isListening={isListening} height={20} color={COLORS.accent} />
+              <AudioWave isListening={isListening} height={18} color={COLORS.accent} />
             </View>
             <Text style={styles.recordingText} numberOfLines={1}>
-              🎙️ Recording mic... {formatTimer(recordingDuration)} (Tap center footer mic to stop)
+              🎙️ Recording mic... {formatTimer(recordingDuration)}
             </Text>
             <TouchableOpacity onPress={stopListening} style={styles.cancelBtn}>
               <Text style={styles.cancelText}>Stop & Send</Text>
@@ -184,35 +255,58 @@ export const AIAssistantScreen = ({ navigation }) => {
           </View>
         )}
 
-        {/* Clean Input Footer matching Figma */}
-        <View style={styles.inputFooter}>
-          <TouchableOpacity style={styles.cameraIconBtn}>
-            <MaterialCommunityIcons name="camera-outline" size={22} color={COLORS.textSecondary} />
-          </TouchableOpacity>
+        {/* Input Footer Container */}
+        <View style={styles.inputFooterContainer}>
+          <View style={styles.inputFooter}>
+            {/* Camera Button */}
+            <TouchableOpacity style={styles.cameraIconBtn} onPress={handleTakePicture}>
+              <MaterialCommunityIcons
+                name={selectedImageUri ? 'camera' : 'camera-outline'}
+                size={24}
+                color={selectedImageUri ? COLORS.primary : COLORS.textSecondary}
+              />
+            </TouchableOpacity>
 
-          <TextInput
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder="Type in chat..."
-            placeholderTextColor={COLORS.textMuted}
-            style={styles.chatInput}
-          />
+            {/* INLINE Photo Attachment Badge (Consumes ZERO extra vertical height!) */}
+            {selectedImageUri && (
+              <View style={styles.inlinePhotoTag}>
+                <Image source={{ uri: selectedImageUri }} style={styles.inlineThumbnail} />
+                <TouchableOpacity onPress={() => setSelectedImageUri(null)} style={styles.inlineCloseBtn}>
+                  <MaterialCommunityIcons name="close-circle" size={16} color={COLORS.danger} />
+                </TouchableOpacity>
+              </View>
+            )}
 
-          {/* Send Button */}
-          <TouchableOpacity
-            style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]}
-            disabled={!inputText.trim() || loading}
-            onPress={() => handleSendQuery(inputText, false)}
-          >
-            <MaterialCommunityIcons name="send" size={18} color={COLORS.white} />
-          </TouchableOpacity>
+            <TextInput
+              value={inputText}
+              onChangeText={setInputText}
+              placeholder={selectedImageUri ? 'Add caption...' : 'Type in chat...'}
+              placeholderTextColor={COLORS.textMuted}
+              style={styles.chatInput}
+              multiline={false}
+            />
+
+            {/* Send Button */}
+            <TouchableOpacity
+              style={[styles.sendBtn, isSendDisabled && styles.sendBtnDisabled]}
+              disabled={isSendDisabled}
+              onPress={() => handleSendQuery(inputText, false)}
+            >
+              <MaterialCommunityIcons name="send" size={18} color={COLORS.white} />
+            </TouchableOpacity>
+          </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </ScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
+  mainWrapper: {
+    flex: 1,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: COLORS.background,
+  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -227,11 +321,11 @@ const styles = StyleSheet.create({
     fontWeight: TYPOGRAPHY.fontWeight.bold,
     color: COLORS.text,
   },
-  container: {
+  listFlexWrapper: {
     flex: 1,
   },
   chatList: {
-    paddingVertical: SPACING.md,
+    paddingVertical: SPACING.sm,
   },
   messageRow: {
     flexDirection: 'row',
@@ -267,6 +361,12 @@ const styles = StyleSheet.create({
   aiBubble: {
     backgroundColor: COLORS.chatAiGreen,
     borderBottomLeftRadius: 2,
+  },
+  chatAttachedImage: {
+    width: 180,
+    height: 120,
+    borderRadius: RADIUS.sm,
+    marginBottom: 6,
   },
   voicePlayerBox: {
     flexDirection: 'row',
@@ -304,13 +404,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.primaryDark,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.md,
-    marginBottom: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 6,
+    borderRadius: RADIUS.sm,
+    marginBottom: 4,
   },
   waveWrapper: {
-    marginRight: 10,
+    marginRight: 8,
   },
   recordingText: {
     flex: 1,
@@ -319,36 +419,58 @@ const styles = StyleSheet.create({
     fontWeight: TYPOGRAPHY.fontWeight.semibold,
   },
   cancelBtn: {
-    marginLeft: 8,
-    padding: 4,
+    marginLeft: 6,
+    padding: 2,
   },
   cancelText: {
     fontSize: TYPOGRAPHY.fontSize.xs,
     color: COLORS.accent,
     fontWeight: TYPOGRAPHY.fontWeight.bold,
   },
+  inputFooterContainer: {
+    paddingVertical: SPACING.xs,
+    backgroundColor: COLORS.background,
+  },
   inputFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surfaceVariant,
     borderRadius: RADIUS.full,
-    paddingHorizontal: SPACING.xs + 2,
-    paddingVertical: 4,
-    marginBottom: SPACING.sm,
+    paddingHorizontal: SPACING.xs + 4,
+    paddingVertical: Platform.OS === 'ios' ? 6 : 4,
+    minHeight: 46,
   },
   cameraIconBtn: {
-    padding: 6,
+    padding: 4,
+  },
+  inlinePhotoTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#C8E6C9',
+    borderRadius: RADIUS.full,
+    paddingRight: 4,
+    marginHorizontal: 4,
+  },
+  inlineThumbnail: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    marginRight: 2,
+  },
+  inlineCloseBtn: {
+    padding: 2,
   },
   chatInput: {
     flex: 1,
     fontSize: TYPOGRAPHY.fontSize.sm,
-    color: COLORS.text,
-    paddingHorizontal: SPACING.xs,
+    color: '#1B1B1B', // High contrast dark text
+    paddingHorizontal: SPACING.xs + 2,
+    paddingVertical: 4,
   },
   sendBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',

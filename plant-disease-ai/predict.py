@@ -13,7 +13,7 @@ import tensorflow as tf
 from PIL import Image
 
 from preprocessing import preprocess_single_image, IMAGE_SIZE
-from utils import get_logger, load_class_names, parse_crop_and_disease
+from utils import get_logger, load_class_names, parse_crop_and_disease, ensure_model_from_hf
 
 logger = get_logger("Predictor")
 
@@ -24,16 +24,23 @@ class DiseasePredictor:
     Loads trained Keras model once into memory and provides fast prediction methods.
     """
 
-    def __init__(self, model_path: str = "models/plant_disease_model.keras", class_names_path: str = "models/class_names.json"):
+    def __init__(
+        self,
+        model_path: str = "models/plant_disease_model.keras",
+        class_names_path: str = "models/class_names.json",
+        hf_repo_id: Optional[str] = None,
+    ):
         """
         Initializes DiseasePredictor by loading model and class labels.
 
         Args:
             model_path (str): Path to saved model (.keras or .h5 file).
             class_names_path (str): Path to class names JSON file.
+            hf_repo_id (str, optional): Hugging Face repo ID to fetch model from.
         """
         self.model_path = model_path
         self.class_names_path = class_names_path
+        self.hf_repo_id = hf_repo_id or os.getenv("HF_REPO_ID")
         self.model: Optional[tf.keras.Model] = None
         self.class_names: List[str] = []
 
@@ -41,6 +48,15 @@ class DiseasePredictor:
 
     def _load_resources(self) -> None:
         """Loads saved Keras model and class names json into memory."""
+        # Check Hugging Face Hub auto-download if local files missing or repo specified
+        if not os.path.exists(self.model_path) or self.hf_repo_id:
+            local_dir = os.path.dirname(self.model_path) or "models"
+            m_path, c_path = ensure_model_from_hf(repo_id=self.hf_repo_id, local_dir=local_dir)
+            if os.path.exists(m_path):
+                self.model_path = m_path
+            if os.path.exists(c_path):
+                self.class_names_path = c_path
+
         # Fallback handling for .keras vs .h5 paths
         if not os.path.exists(self.model_path):
             alt_path = self.model_path.replace(".keras", ".h5") if self.model_path.endswith(".keras") else self.model_path.replace(".h5", ".keras")

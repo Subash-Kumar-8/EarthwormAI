@@ -32,9 +32,10 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing Earthworm AI DiseasePredictor on startup...")
     model_path = os.getenv("MODEL_PATH", "models/plant_disease_model.keras")
     class_names_path = os.getenv("CLASS_NAMES_PATH", "models/class_names.json")
+    hf_repo_id = os.getenv("HF_REPO_ID")
 
     try:
-        predictor = DiseasePredictor(model_path=model_path, class_names_path=class_names_path)
+        predictor = DiseasePredictor(model_path=model_path, class_names_path=class_names_path, hf_repo_id=hf_repo_id)
         logger.info("Predictor initialized successfully.")
     except Exception as e:
         logger.warning(f"Could not initialize model on startup ({e}). Predictor will lazy-load or fail gracefully on endpoint call.")
@@ -96,7 +97,8 @@ async def predict_plant_disease(file: UploadFile = File(...)):
         if predictor is None:
             model_path = os.getenv("MODEL_PATH", "models/plant_disease_model.keras")
             class_names_path = os.getenv("CLASS_NAMES_PATH", "models/class_names.json")
-            predictor = DiseasePredictor(model_path=model_path, class_names_path=class_names_path)
+            hf_repo_id = os.getenv("HF_REPO_ID")
+            predictor = DiseasePredictor(model_path=model_path, class_names_path=class_names_path, hf_repo_id=hf_repo_id)
 
         # Read image bytes
         image_bytes = await file.read()

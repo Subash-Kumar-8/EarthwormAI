@@ -121,3 +121,61 @@ def parse_crop_and_disease(class_name: str) -> Tuple[str, str]:
     disease = disease.replace("  ", " ").title()
 
     return crop, disease
+
+
+def ensure_model_from_hf(
+    repo_id: Tuple[str, ...] | str | None = None,
+    filename: str = "plant_disease_model.keras",
+    class_names_filename: str = "class_names.json",
+    local_dir: str = "models",
+) -> Tuple[str, str]:
+    """
+    Ensures that the model file and class names file exist locally.
+    If missing, attempts to download them from Hugging Face Hub.
+
+    Args:
+        repo_id (str, optional): Hugging Face repository ID (e.g. 'username/model-repo').
+                                 Defaults to HF_REPO_ID env var.
+        filename (str): Model filename in HF repository.
+        class_names_filename (str): Class names JSON filename in HF repository.
+        local_dir (str): Directory where downloaded files are saved.
+
+    Returns:
+        Tuple[str, str]: (local_model_path, local_class_names_path)
+    """
+    if isinstance(repo_id, tuple):
+        repo_id = repo_id[0] if repo_id else None
+
+    target_repo_id = repo_id or os.getenv("HF_REPO_ID")
+    local_model_path = os.path.join(local_dir, filename)
+    local_class_names_path = os.path.join(local_dir, class_names_filename)
+
+    # Check if files already exist locally
+    if os.path.exists(local_model_path) and os.path.exists(local_class_names_path):
+        logger.info(f"Model and class names found locally at '{local_dir}'.")
+        return local_model_path, local_class_names_path
+
+    # Fallback to .h5 if .keras doesn't exist locally
+    alt_model_path = local_model_path.replace(".keras", ".h5")
+    if os.path.exists(alt_model_path) and os.path.exists(local_class_names_path):
+        logger.info(f"Found alternative model file at '{alt_model_path}'.")
+        return alt_model_path, local_class_names_path
+
+    if not target_repo_id:
+        logger.warning("Local model files missing and HF_REPO_ID not configured.")
+        return local_model_path, local_class_names_path
+
+    try:
+        from huggingface_hub import hf_hub_download
+
+        logger.info(f"Downloading model from Hugging Face Hub repository: '{target_repo_id}'...")
+        os.makedirs(local_dir, exist_ok=True)
+
+        downloaded_model = hf_hub_download(repo_id=target_repo_id, filename=filename, local_dir=local_dir)
+        downloaded_classes = hf_hub_download(repo_id=target_repo_id, filename=class_names_filename, local_dir=local_dir)
+
+        logger.info(f"Successfully downloaded model to '{downloaded_model}' and class names to '{downloaded_classes}'")
+        return downloaded_model, downloaded_classes
+    except Exception as e:
+        logger.error(f"Failed to download model from Hugging Face Hub ('{target_repo_id}'): {e}")
+        return local_model_path, local_class_names_path

@@ -1,9 +1,14 @@
 {
   "dependencies": {
+    "@google/genai": "^2.15.0",
+    "@google/generative-ai": "^0.24.1",
     "axios": "^1.19.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "frac": "^1.1.2",
+    "franc": "^6.2.0",
+    "multer": "^2.2.0"
   },
   "type": "module"
 }

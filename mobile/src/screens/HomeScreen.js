@@ -48,85 +48,115 @@ export const HomeScreen = ({ navigation }) => {
   const [locationCoords, setLocationCoords] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
   const [nearbyShops, setNearbyShops] = useState([]);
-
   const handleUpdateLocation = async () => {
     setIsLocating(true);
+    let latitude;
+    let longitude;
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-
-      if (status !== 'granted') {
+      if (status !== "granted") {
         Alert.alert(
-          'Location Permission Denied',
-          'Earthworm AI requires location access to fetch hyper-local weather alerts and mandi prices for your farm.',
-          [{ text: 'OK' }]
+          "Location Permission Denied",
+          "Earthworm AI requires location access to fetch hyper-local weather alerts and mandi prices for your farm."
         );
-        setIsLocating(false);
         return;
       }
-      console.log("Location permission granted. Fetching current position...");
+      console.log("✅ Location permission granted");
+    } catch (err) {
+      console.error("❌ Permission Error:", err);
+      Alert.alert("Error", "Unable to request location permission.");
+      return;
+    }
+    try {
+      console.log("📍 Fetching current GPS location...");
       const currentPos = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
-
-      const { latitude, longitude } = currentPos.coords;
-      const coordsObj = { latitude, longitude };
-      setLocationCoords(coordsObj);
-
+      latitude = currentPos.coords.latitude;
+      longitude = currentPos.coords.longitude;
+      setLocationCoords({ latitude, longitude });
+      console.log(
+        `✅ GPS Location: ${latitude}, ${longitude}`
+      );
+    } catch (err) {
+      console.error("❌ GPS Error:", err);
+      Alert.alert(
+        "Location Error",
+        "Please enable GPS and try again."
+      );
+      return;
+    }
+    try {
+      console.log("🏪 Fetching nearby agri shops...");
       const response = await fetch(
         `http://192.168.137.198:3001/api/nearby/agri-shops?lat=${latitude}&lon=${longitude}`
       );
-
       const shops = await response.json();
-
       setNearbyShops(shops);
-      console.log("Fetching Weather API...")
+      console.log("✅ Nearby Shops:", shops);
+    } catch (err) {
+      console.error("❌ Nearby Shops Error:", err);
+    }
+    try {
+      console.log("🌦 Fetching weather...");
       const weatherResponse = await fetch(
         `http://192.168.137.198:3001/api/weather?lat=${latitude}&lon=${longitude}`
       );
-
       const weatherData = await weatherResponse.json();
-        if (weatherData.success) {
-          setWeather({
-            temp: Math.round(weatherData.weather.temperature),
-            condition: weatherData.weather.condition,
-            description: weatherData.weather.description,
-          });
-        }
-
-      console.log(shops);
-
-      console.log('[GPS Location Updated] Latitude:', latitude, 'Longitude:', longitude);
-
-      try {
-        const reverseGeocode = await Location.reverseGeocodeAsync({ latitude, longitude });
-        if (reverseGeocode && reverseGeocode.length > 0) {
-          const place = reverseGeocode[0];
-          const city = place.city || place.subregion || place.district || 'Unknown';
-          const region = place.region || place.country || 'India';
-          const formattedLocation = `${city}, ${region} (${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°)`;
-          setLocationName(formattedLocation);
-        } else {
-          setLocationName(`Lat: ${latitude.toFixed(4)}°, Lon: ${longitude.toFixed(4)}°`);
-        }
-      } catch (geocodeErr) {
-        setLocationName(`Lat: ${latitude.toFixed(4)}°, Lon: ${longitude.toFixed(4)}°`);
+      if (weatherData.success) {
+        setWeather({
+          temp: Math.round(weatherData.weather.temperature),
+          condition: weatherData.weather.condition,
+          description: weatherData.weather.description,
+        });
+        console.log("✅ Weather:", weatherData.weather);
       }
-
-      Alert.alert(
-        'GPS Location Updated!',
-        `Latitude: ${latitude}\nLongitude: ${longitude}`,
-        [{ text: 'OK' }]
-      );
-    } catch (error) {
-      console.error('Error fetching GPS location:', error);
-      Alert.alert(
-        'Location Error',
-        'Please ensure GPS / Location service is turned ON on your device.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setIsLocating(false);
+    } catch (err) {
+      console.error("❌ Weather API Error:", err);
     }
+    try {
+      console.log("🗺 Reverse geocoding...");
+      const reverseGeocode = await Location.reverseGeocodeAsync({
+        latitude,
+        longitude,
+      });
+      if (reverseGeocode.length > 0) {
+        const place = reverseGeocode[0];
+        const city =
+          place.city ||
+          place.subregion ||
+          place.district ||
+          "Unknown";
+        const region =
+          place.region ||
+          place.country ||
+          "India";
+        setLocationName(
+          `${city}, ${region} (${latitude.toFixed(
+            2
+          )}°, ${longitude.toFixed(2)}°)`
+        );
+      } else {
+        setLocationName(
+          `Lat: ${latitude.toFixed(4)}°, Lon: ${longitude.toFixed(4)}°`
+        );
+      }
+      console.log("✅ Reverse geocoding completed");
+    } catch (err) {
+      console.error("❌ Reverse Geocoding Error:", err);
+      setLocationName(
+        `Lat: ${latitude.toFixed(4)}°, Lon: ${longitude.toFixed(4)}°`
+      );
+    }
+    try {
+      Alert.alert(
+        "GPS Location Updated!",
+        `Latitude: ${latitude}\nLongitude: ${longitude}`
+      );
+    } catch (err) {
+      console.error("❌ Alert Error:", err);
+    }
+    setIsLocating(false);
   };
 
   return (

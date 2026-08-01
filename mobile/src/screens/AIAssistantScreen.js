@@ -1,6 +1,8 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
+import * as Speech from "expo-speech";
+import * as Location from "expo-location";
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, FlatList, Image, Keyboard, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AudioWave from '../components/AudioWave';
@@ -10,7 +12,6 @@ import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useVoiceContext } from '../context/VoiceContext';
 import { cropService } from '../services/cropService';
 
-// Voice Note Player Component for user's recorded audio playback
 const VoiceNotePlayer = ({ audioUri, durationSeconds = 3 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const soundRef = useRef(null);
@@ -32,7 +33,6 @@ const VoiceNotePlayer = ({ audioUri, durationSeconds = 3 }) => {
         }
       }
 
-      // Load & Play recorded voice audio
       const { sound } = await Audio.Sound.createAsync(
         { uri: audioUri },
         { shouldPlay: true }
@@ -62,6 +62,8 @@ const VoiceNotePlayer = ({ audioUri, durationSeconds = 3 }) => {
     };
   }, []);
 
+  
+
   return (
     <View style={styles.voicePlayerBox}>
       <TouchableOpacity activeOpacity={0.8} onPress={handlePlayPause} style={styles.playBtnCircle}>
@@ -77,11 +79,13 @@ const VoiceNotePlayer = ({ audioUri, durationSeconds = 3 }) => {
 };
 
 export const AIAssistantScreen = ({ navigation, route }) => {
+  const [recording, setRecording] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
   const [messages, setMessages] = useState(CHAT_MESSAGES_INITIAL);
   const [inputText, setInputText] = useState('');
-  const [selectedImageUri, setSelectedImageUri] = useState(null); // Captured Camera Image
+  const [selectedImageUri, setSelectedImageUri] = useState(null); 
   const [loading, setLoading] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0); // Universal Keyboard Offset
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const flatListRef = useRef(null);
   const { isListening, recordingDuration, stopListening, setOnTranscribedCallback } = useVoiceContext();
 
@@ -95,8 +99,13 @@ export const AIAssistantScreen = ({ navigation, route }) => {
       );
     }
   }, [route?.params?.attachedImage]);
+   
+  useEffect(() => {
+      return () => {
+          Speech.stop();
+      };
+  }, []);
 
-  // Universal Native Keyboard Event Listener for Android & iOS
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
@@ -109,13 +118,34 @@ export const AIAssistantScreen = ({ navigation, route }) => {
       setKeyboardHeight(0);
     });
 
+
     return () => {
       showSubscription.remove();
       hideSubscription.remove();
     };
   }, []);
 
-  // Direct Camera Capture Handler
+  const getCurrentLocation = async () => {
+
+      const { status } =
+          await Location.requestForegroundPermissionsAsync();
+
+      if (status !== "granted") {
+
+          Alert.alert("Location permission denied");
+
+          return null;
+      }
+
+      const location =
+          await Location.getCurrentPositionAsync({});
+
+      return {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+      };
+
+  };
   const handleTakePicture = async () => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -129,7 +159,7 @@ export const AIAssistantScreen = ({ navigation, route }) => {
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: false, // Bypasses black crop screen -> direct "OK / Use Photo"
+        allowsEditing: false, 
         quality: 0.8,
       });
 
@@ -144,7 +174,88 @@ export const AIAssistantScreen = ({ navigation, route }) => {
     }
   };
 
+  const speakText = (text) => {
+    Speech.stop();
+
+    Speech.speak(text, {
+      language: "en-US",
+      pitch: 1,
+      rate: 0.95,
+    });
+  };
+
+  const startRecording = async () => {
+    try {
+      Speech.stop();
+      const permission = await Audio.requestPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert("Permission Required", "Microphone permission is required.");
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      setRecording(recording);
+      setIsRecording(true);
+
+      console.log("Recording Started...");
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const stopRecording = async () => {
+    try {
+      if (!recording) return;
+
+      await recording.stopAndUnloadAsync();
+
+      const uri = recording.getURI();
+
+      console.log("Recording saved:", uri);
+
+      setRecording(null);
+      setIsRecording(false);
+
+      const formData = new FormData();
+
+      formData.append("audio", {
+        uri,
+        type: "audio/m4a",
+        name: "voice.m4a",
+      });
+
+      console.log("Uploading audio...");
+
+      const response = await fetch("http://192.168.137.198:3001/api/stt", {
+        method: "POST",
+        body: formData,
+      });
+
+      console.log("Response received");
+
+      const data = await response.json();
+      console.log(data);
+      if (data.success) {
+        setInputText(data.text);
+        await handleSendQuery(data.text, true);
+      }
+
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
   const handleSendQuery = async (queryPayload, isVoice = false) => {
+    Speech.stop();
     const textToSend = typeof queryPayload === 'string' ? queryPayload : queryPayload?.text;
     const currentAttachedImage = selectedImageUri || (typeof queryPayload === 'object' ? queryPayload.attachedImage : null);
 
@@ -167,8 +278,43 @@ export const AIAssistantScreen = ({ navigation, route }) => {
     setLoading(true);
 
     try {
-      const aiReply = await cropService.queryAIAssistant(textToSend || 'Analyze attached crop photo');
-      setMessages((prev) => [...prev, aiReply]);
+      const location = await getCurrentLocation();
+      const currentAttachedImage =
+          selectedImageUri ||
+          (typeof queryPayload === "object"
+              ? queryPayload.attachedImage
+              : null);
+            const aiReply = await cropService.queryAIAssistant({
+                message: textToSend,
+                latitude: location?.latitude,
+                longitude: location?.longitude,
+                imageUri: currentAttachedImage,
+            });
+
+
+            const cleanText = (text) => {
+                if (!text) return "";
+
+                return text
+                    .replace(/\*\*/g, "")
+                    .replace(/\*/g, "")
+                    .replace(/#/g, "")
+                    .replace(/`/g, "")
+                    .trim();
+            };
+
+
+            const cleanedReply = {
+                ...aiReply,
+                text: cleanText(aiReply.text),
+            };
+
+
+            setMessages((prev) => [...prev, cleanedReply]);
+
+            if (cleanedReply?.text) {
+                speakText(cleanedReply.text);
+            }
     } catch (e) {
       console.error(e);
     } finally {
@@ -176,12 +322,15 @@ export const AIAssistantScreen = ({ navigation, route }) => {
     }
   };
 
-  // Connect global voice recording auto-submission callback
   useEffect(() => {
-    setOnTranscribedCallback(() => (voicePayload) => {
-      handleSendQuery(voicePayload, true);
-    });
-  }, []);
+      setOnTranscribedCallback(() => (voicePayload) => {
+          handleSendQuery(voicePayload, true);
+      });
+
+      return () => {
+          setOnTranscribedCallback(null);
+      };
+  }, [setOnTranscribedCallback]);
 
   const formatTimer = (sec) => {
     const mins = Math.floor(sec / 60);
@@ -296,8 +445,22 @@ export const AIAssistantScreen = ({ navigation, route }) => {
               style={styles.chatInput}
               multiline={false}
             />
-
-            {/* Send Button */}
+            <TouchableOpacity
+                style={styles.micBtn}
+                onPress={() => {
+                    if (isRecording) {
+                        stopRecording();
+                    } else {
+                        startRecording();
+                    }
+                }}
+            >
+                <MaterialCommunityIcons
+                    name={isRecording ? "stop-circle" : "microphone"}
+                    size={24}
+                    color={isRecording ? "#FF3B30" : COLORS.primary}
+                />
+            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.sendBtn, isSendDisabled && styles.sendBtnDisabled]}
               disabled={isSendDisabled}
@@ -489,6 +652,10 @@ const styles = StyleSheet.create({
   sendBtnDisabled: {
     backgroundColor: COLORS.textMuted,
   },
+  micBtn: {
+    marginHorizontal: 8,
+    padding: 4,
+},
 });
 
 export default AIAssistantScreen;

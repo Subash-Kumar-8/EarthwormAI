@@ -1,0 +1,44 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment variables
+.env
+
+# IDEs and Editors
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Machine Learning & Cache / Logs
+models/
+*.h5
+*.keras
+*.tflite
+*.pb
+*.ckpt*
+*.pt
+*.pth
+*.onnx
+saved_model/
+checkpoints/
+
+# Cache & Dataset files
+*.cache*
+train.cache*
+val.cache*
+data/
+dataset/
+datasets/
+logs/
+*.log

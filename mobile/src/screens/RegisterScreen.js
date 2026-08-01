@@ -20,29 +20,47 @@ export const RegisterScreen = ({ navigation }) => {
 
   const handleCreateAccount = async () => {
     setErrorMessage('');
-
-    // Input Validation
-    if (!name.trim() || !mobileNo.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
-      setErrorMessage('Please fill in all 5 required fields.');
+    if (
+      !name.trim() ||
+      !mobileNo.trim() ||
+      !email.trim() ||
+      !password.trim() ||
+      !confirmPassword.trim()
+    ) {
+      setErrorMessage('Please fill in all required fields.');
       return;
     }
-
     if (password !== confirmPassword) {
-      setErrorMessage('Password and ConfirmPassword do not match.');
+      setErrorMessage('Passwords do not match.');
       return;
     }
-
+    if (password.length < 6) {
+      setErrorMessage('Password must be at least 6 characters long.');
+      return;
+    }
     setLoading(true);
     try {
       await register({
-        name,
-        phone: mobileNo,
-        email,
+        name: name.trim(),
+        phone: mobileNo.trim(),
+        email: email.trim(),
         password,
       });
-      navigation.replace('MainApp');
-    } catch (e) {
-      setErrorMessage('Failed to create account. Please try again.');
+    } catch (error) {
+      console.log(error);
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          setErrorMessage('This email is already registered.');
+          break;
+        case 'auth/invalid-email':
+          setErrorMessage('Please enter a valid email address.');
+          break;
+        case 'auth/weak-password':
+          setErrorMessage('Password should be at least 6 characters.');
+          break;
+        default:
+          setErrorMessage(error.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -51,22 +69,17 @@ export const RegisterScreen = ({ navigation }) => {
   return (
     <ScreenWrapper backgroundColor={COLORS.primary}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Header Section */}
         <View style={styles.headerSection}>
           <View style={styles.logoRow}>
             <EarthwormLogo size={42} badge={true} />
             <Text style={styles.headerTitle}>Sign up</Text>
           </View>
         </View>
-
-        {/* Error Alert Box */}
         {errorMessage ? (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{errorMessage}</Text>
           </View>
         ) : null}
-
-        {/* 5 Input Fields matching Figma */}
         <View style={styles.formSection}>
           <View style={styles.inputBox}>
             <TextInput
@@ -99,8 +112,6 @@ export const RegisterScreen = ({ navigation }) => {
               style={styles.textInput}
             />
           </View>
-
-          {/* Password with Eye Symbol Toggle */}
           <View style={[styles.inputBox, styles.passwordBox]}>
             <TextInput
               value={password}
@@ -122,8 +133,6 @@ export const RegisterScreen = ({ navigation }) => {
               />
             </TouchableOpacity>
           </View>
-
-          {/* ConfirmPassword with Eye Symbol Toggle */}
           <View style={[styles.inputBox, styles.passwordBox]}>
             <TextInput
               value={confirmPassword}
@@ -145,8 +154,6 @@ export const RegisterScreen = ({ navigation }) => {
               />
             </TouchableOpacity>
           </View>
-
-          {/* White Pill Button: Create account */}
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={handleCreateAccount}
@@ -158,11 +165,9 @@ export const RegisterScreen = ({ navigation }) => {
             </Text>
           </TouchableOpacity>
         </View>
-
-        {/* Footer Link */}
         <View style={styles.footerRow}>
           <Text style={styles.alreadyText}>Already have an account?</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={styles.loginLink}>Log in</Text>
           </TouchableOpacity>
         </View>

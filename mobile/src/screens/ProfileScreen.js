@@ -8,16 +8,15 @@ import { useAuth } from '../hooks/useAuth';
 
 export const ProfileScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
+  console.log("Current User:", user);
   const activeFarmer = user || USER_PROFILE;
 
-  const handleLogout = () => {
-    logout();
-    navigation.replace('Login');
+  const handleLogout = async () => {
+    await logout();
   };
 
-  const handleDeleteAccount = () => {
-    logout();
-    navigation.replace('Login');
+  const handleDeleteAccount = async () => {
+    await logout();
   };
 
   return (

@@ -63,6 +63,7 @@ export const HomeScreen = ({ navigation }) => {
         setIsLocating(false);
         return;
       }
+      console.log("Location permission granted. Fetching current position...");
       const currentPos = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
@@ -78,7 +79,7 @@ export const HomeScreen = ({ navigation }) => {
       const shops = await response.json();
 
       setNearbyShops(shops);
-      
+      console.log("Fetching Weather API...")
       const weatherResponse = await fetch(
         `http://192.168.137.198:3001/api/weather?lat=${latitude}&lon=${longitude}`
       );

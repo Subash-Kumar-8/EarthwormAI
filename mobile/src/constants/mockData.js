@@ -94,3 +94,30 @@ export const WEATHER_FORECAST = [
   { day: 'Saturday', minTemp: '17°', maxTemp: '30°', condition: 'Sunny' },
   { day: 'Saturday', minTemp: '17°', maxTemp: '30°', condition: 'Sunny' },
 ];
+
+export const ONBOARDING_SLIDES = [
+  {
+    id: '1',
+    iconName: 'leaf',
+    tagline: 'Smart Farming',
+    title: 'Welcome to Earthworm AI',
+    description:
+      'Your AI-powered farming assistant for disease detection, weather advice, fertilizer recommendations and market prices.',
+  },
+  {
+    id: '2',
+    iconName: 'weather-partly-cloudy',
+    tagline: 'Weather Alerts',
+    title: 'Know Before You Grow',
+    description:
+      'Receive accurate weather forecasts and farming advisories tailored to your location.',
+  },
+  {
+    id: '3',
+    iconName: 'robot-outline',
+    tagline: 'AI Assistant',
+    title: 'Ask Anything',
+    description:
+      'Chat with Earthworm AI in your preferred language and get instant farming guidance anytime.',
+  },
+];

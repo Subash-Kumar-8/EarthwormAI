@@ -25,7 +25,6 @@ export const LoginScreen = ({ navigation }) => {
     setLoading(true);
     try {
       await login(username, password);
-      navigation.replace('MainApp');
     } catch (e) {
       setErrorMessage('Login failed. Please check credentials.');
     } finally {

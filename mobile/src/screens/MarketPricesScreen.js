@@ -27,6 +27,7 @@ export const MarketPricesScreen = ({ navigation }) => {
       );
 
       const data = await response.json();
+      console.log(JSON.stringify(data, null, 2));
 
       if (data.success) {
         setMarketData({
@@ -83,7 +84,9 @@ export const MarketPricesScreen = ({ navigation }) => {
         ]
       );
     };
-
+    filteredCrops.forEach((item) => {
+      console.log(item.id, item.name);
+    });
   return (
     <ScreenWrapper>
       {/* Back Header matching Figma */}

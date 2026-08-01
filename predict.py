@@ -22,34 +22,87 @@ class DiseasePredictor:
     """
     Inference class for Earthworm AI plant disease model.
     Loads trained Keras model once into memory and provides fast prediction methods.
+    Supports auto-downloading model artifacts from Hugging Face Hub.
     """
 
-    def __init__(self, model_path: str = "models/plant_disease_model.keras", class_names_path: str = "models/class_names.json"):
+    def __init__(
+        self,
+        model_path: str = "models/plant_disease_model.keras",
+        class_names_path: str = "models/class_names.json",
+        hf_repo_id: Optional[str] = None,
+        hf_token: Optional[str] = None,
+    ):
         """
         Initializes DiseasePredictor by loading model and class labels.
 
         Args:
             model_path (str): Path to saved model (.keras or .h5 file).
             class_names_path (str): Path to class names JSON file.
+            hf_repo_id (Optional[str]): Hugging Face repo ID to download model from if missing locally.
+            hf_token (Optional[str]): Optional Hugging Face auth token.
         """
         self.model_path = model_path
         self.class_names_path = class_names_path
+        self.hf_repo_id = hf_repo_id or os.getenv("HF_REPO_ID")
+        self.hf_token = hf_token or os.getenv("HF_TOKEN")
         self.model: Optional[tf.keras.Model] = None
         self.class_names: List[str] = []
 
         self._load_resources()
 
+    def _download_from_hf(self) -> None:
+        """Downloads model and class names from Hugging Face Hub if missing locally."""
+        if not self.hf_repo_id:
+            return
+
+        # Clean repo_id if a full URL was passed
+        if "huggingface.co/" in self.hf_repo_id:
+            self.hf_repo_id = self.hf_repo_id.split("huggingface.co/")[-1].strip("/")
+
+        logger.info(f"Attempting to download model from Hugging Face repository '{self.hf_repo_id}'...")
+        try:
+            from huggingface_hub import hf_hub_download
+
+            model_filename = os.path.basename(self.model_path)
+            if not model_filename.endswith((".keras", ".h5")):
+                model_filename = "plant_disease_model.keras"
+
+            downloaded_model_path = hf_hub_download(
+                repo_id=self.hf_repo_id,
+                filename=model_filename,
+                token=self.hf_token,
+            )
+            self.model_path = downloaded_model_path
+            logger.info(f"Successfully downloaded model file from HF Hub to '{downloaded_model_path}'.")
+
+            class_names_filename = os.path.basename(self.class_names_path)
+            try:
+                downloaded_class_path = hf_hub_download(
+                    repo_id=self.hf_repo_id,
+                    filename=class_names_filename,
+                    token=self.hf_token,
+                )
+                self.class_names_path = downloaded_class_path
+                logger.info(f"Successfully downloaded class names from HF Hub to '{downloaded_class_path}'.")
+            except Exception as e:
+                logger.warning(f"Could not download class names from HF Hub: {e}")
+
+        except Exception as e:
+            logger.error(f"Failed to download model from Hugging Face Hub '{self.hf_repo_id}': {e}")
+
     def _load_resources(self) -> None:
         """Loads saved Keras model and class names json into memory."""
-        # Fallback handling for .keras vs .h5 paths
+        # Check if local model exists, else try downloading from HF
         if not os.path.exists(self.model_path):
             alt_path = self.model_path.replace(".keras", ".h5") if self.model_path.endswith(".keras") else self.model_path.replace(".h5", ".keras")
             if os.path.exists(alt_path):
                 logger.info(f"Model not found at {self.model_path}, using alternative path: {alt_path}")
                 self.model_path = alt_path
+            elif self.hf_repo_id:
+                self._download_from_hf()
             else:
                 logger.error(f"Model file not found at: {self.model_path} or {alt_path}")
-                raise FileNotFoundError(f"Model file not found at: {self.model_path}")
+                raise FileNotFoundError(f"Model file not found at: {self.model_path}. Set HF_REPO_ID to auto-download from Hugging Face.")
 
         logger.info(f"Loading trained TensorFlow model from '{self.model_path}'...")
         try:

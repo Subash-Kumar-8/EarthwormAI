@@ -9,7 +9,7 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBP8wntup9kYwIwXCfy9G2vGx86GskJ_hE",
+  apiKey: process.env.FIREBASE_API_KEY,
   authDomain: "earthwormai.firebaseapp.com",
   projectId: "earthwormai",
   storageBucket: "earthwormai.firebasestorage.app",

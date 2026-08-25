@@ -279,20 +279,16 @@ app.get("/api/weather/forecast", async (req, res) => {
 
 app.get("/api/market", async (req, res) => {
     console.log("Market prices endpoint hit:", req.query);
-
     try {
         const { lat, lon, state, district, commodity } = req.query;
-
         if (!lat || !lon) {
             return res.status(400).json({
                 success: false,
                 message: "Latitude and Longitude are required."
             });
         }
-
         const latitude = Number(lat);
         const longitude = Number(lon);
-
         if (
             !Number.isFinite(latitude) ||
             !Number.isFinite(longitude) ||
@@ -306,12 +302,10 @@ app.get("/api/market", async (req, res) => {
                 message: "Invalid latitude or longitude."
             });
         }
-
+        
         let farmerState = state;
         let farmerDistrict = district;
-
         if (!farmerState || !farmerDistrict) {
-
             const geoResponse = await axios.get(
                 "https://nominatim.openstreetmap.org/reverse",
                 {
@@ -326,9 +320,7 @@ app.get("/api/market", async (req, res) => {
                     }
                 }
             );
-
             const address = geoResponse.data.address || {};
-
             farmerState = farmerState || address.state;
             farmerDistrict =
                 farmerDistrict ||
@@ -336,12 +328,10 @@ app.get("/api/market", async (req, res) => {
                 address.district ||
                 address.county;
         }
-
         console.log("Detected location:", {
             state: farmerState,
             district: farmerDistrict
         });
-
         if (!farmerState) {
             return res.status(404).json({
                 success: false,
@@ -349,98 +339,237 @@ app.get("/api/market", async (req, res) => {
             });
         }
 
-        const params = {
+        const classifyCrop = (commodity) => {
+            const crop = commodity.trim().toLowerCase();
+
+            if (
+                crop.includes("cotton") ||
+                crop.includes("sugarcane") ||
+                crop.includes("tobacco") ||
+                crop.includes("jute") ||
+                crop.includes("tea") ||
+                crop.includes("coffee") ||
+                crop.includes("rubber") ||
+                crop.includes("coconut") ||
+                crop.includes("arecanut") ||
+                crop.includes("pepper") ||
+                crop.includes("cardamom")
+            ) {
+                return "cash";
+            }
+            return "food";
+        };
+
+        const baseParams = {
             "api-key": process.env.DATA_GOV_API_KEY,
             format: "json",
-            limit: 50,
+            limit: Number(req.query.limit) || 50,
 
             "filters[state.keyword]": farmerState
         };
-
         if (farmerDistrict) {
-            params["filters[district]"] = farmerDistrict;
+            baseParams["filters[district]"] = farmerDistrict;
         }
-
         if (commodity) {
-            params["filters[commodity]"] = commodity;
+            baseParams["filters[commodity]"] = commodity;
         }
-
-        const marketResponse = await axios.get(
-            "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070",
+        const MARKET_API =
+            "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070";
+        const todayResponse = await axios.get(
+            MARKET_API,
             {
-                params
+                params: baseParams
+            }
+        );
+        const todayRecords = todayResponse.data.records || [];
+        console.log(
+            `Today's market records: ${todayRecords.length}`
+        );
+        if (todayRecords.length === 0) {
+            return res.json({
+                success: true,
+                location: {
+                    latitude,
+                    longitude,
+                    state: farmerState,
+                    district: farmerDistrict || null
+                },
+                lastUpdated: null,
+                count: 0,
+                foodCrops: [],
+                cashCrops: []
+            });
+        }
+        const latestDate = todayRecords[0].arrival_date;
+        const [day, month, year] = latestDate.split("/");
+        const latestDateObj = new Date(
+            `${year}-${month}-${day}T00:00:00`
+        );
+        latestDateObj.setDate(latestDateObj.getDate() - 1);
+        const previousDay =
+            String(latestDateObj.getDate()).padStart(2, "0");
+        const previousMonth =
+            String(latestDateObj.getMonth() + 1).padStart(2, "0");
+        const previousYear =
+            latestDateObj.getFullYear();
+        const previousDate =
+            `${previousDay}/${previousMonth}/${previousYear}`;
+        console.log(
+            "Today's date:",
+            latestDate
+        );
+        console.log(
+            "Previous date:",
+            previousDate
+        );
+
+        const previousParams = {
+            ...baseParams,
+            "filters[arrival_date]": previousDate
+        };
+        const previousResponse = await axios.get(
+            MARKET_API,
+            {
+                params: previousParams
+            }
+        );
+        const previousRecords =
+            previousResponse.data.records || [];
+        console.log(
+            `Previous day records: ${previousRecords.length}`
+        );
+
+        const previousPriceMap = new Map();
+        previousRecords.forEach(item => {
+            const key = [
+                item.market,
+                item.commodity,
+                item.variety,
+                item.grade
+            ]
+                .map(value =>
+                    (value || "")
+                        .trim()
+                        .toLowerCase()
+                )
+                .join("|");
+            previousPriceMap.set(
+                key,
+                Number(item.modal_price)
+            );
+        });
+
+        const marketPrices = todayRecords.map(
+            (item, index) => {
+                const key = [
+                    item.market,
+                    item.commodity,
+                    item.variety,
+                    item.grade
+                ]
+                    .map(value =>
+                        (value || "")
+                            .trim()
+                            .toLowerCase()
+                    )
+                    .join("|");
+                const todayPrice =
+                    Number(item.modal_price);
+                const previousDayPrice =
+                    previousPriceMap.get(key) ?? null;
+                let change = 0;
+                let changeType = "none";
+                if (previousDayPrice !== null) {
+                    change =
+                        todayPrice - previousDayPrice;
+                    if (change > 0) {
+                        changeType = "up";
+                    }
+                    else if (change < 0) {
+                        changeType = "down";
+                    }
+                }
+
+                return {
+                    id:
+                        `${item.market}-${item.commodity}-${index}`,
+                    name:
+                        item.commodity,
+                    todayPrice,
+                    previousDayPrice,
+                    change,
+                    changeType,
+                    unit:
+                        "Quintal",
+                    market:
+                        item.market,
+                    variety:
+                        item.variety,
+                    grade:
+                        item.grade,
+                    arrivalDate:
+                        item.arrival_date
+                };
             }
         );
 
-        const records = marketResponse.data.records || [];
+        const foodCrops =
+            marketPrices.filter(
+                item =>
+                    classifyCrop(item.name) === "food"
+            );
+        const cashCrops =
+            marketPrices.filter(
+                item =>
+                    classifyCrop(item.name) === "cash"
+            );
 
-        const marketPrices = records.map(item => ({
-            state: item.state,
-            district: item.district,
-            market: item.market,
-            commodity: item.commodity,
-            variety: item.variety,
-            grade: item.grade,
-
-            arrivalDate: item.arrival_date,
-
-            minPrice: Number(item.min_price),
-            maxPrice: Number(item.max_price),
-            modalPrice: Number(item.modal_price),
-
-            unit: "₹/Quintal"
-        }));
-
+        console.log("🍚 Food crops:", foodCrops.length);
+        console.log("💰 Cash crops:", cashCrops.length);
+        console.log("📦 About to send market response");
+        
         res.json({
             success: true,
-
             location: {
                 latitude,
                 longitude,
                 state: farmerState,
-                district: farmerDistrict || null
+                district:
+                    farmerDistrict || null
             },
-
             lastUpdated:
-                records.length > 0
-                    ? records[0].arrival_date
-                    : null,
-
-            count: marketPrices.length,
-
-            data: marketPrices
+                latestDate,
+            previousDate,
+            count:
+                marketPrices.length,
+            foodCrops,
+            cashCrops
         });
-
-    } catch (error) {
-
+    }
+    catch (error) {
         console.error(
             "Market API Error:",
-            error.response?.data || error.message
+            error.response?.data ||
+            error.message
         );
-
         res.status(500).json({
             success: false,
-            message: "Unable to fetch market prices."
+            message:
+                "Unable to fetch market prices."
         });
     }
 });
 
 app.post("/api/chat", async (req, res) => {
     try {
-
         const { message } = req.body;
-
         const reply = await askGemini(message);
-
         res.json({
             success:true,
             reply
         });
-
     } catch(err){
-
         console.error("Gemini Error:", err.message);
-
         res.status(429).json({
             success:false,
             message:"Gemini quota exceeded. Please try again later."
@@ -452,21 +581,14 @@ app.post(
     "/api/stt",
     upload.single("audio"),
     async (req, res) => {
-
         try {
-
             const text = await speechToText(req.file.path);
-
             res.json({
                 success: true,
                 text,
             });
-            
-
         } catch (err) {
-
             console.error(err);
-
             res.status(500).json({
                 success: false,
                 message: err.message,

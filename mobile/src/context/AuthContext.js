@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
-        console.log("Auth Changed:", firebaseUser);
+        //console.log("Auth Changed:", firebaseUser);
         if (firebaseUser) {
           const idToken = await firebaseUser.getIdToken();
 

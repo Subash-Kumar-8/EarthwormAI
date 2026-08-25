@@ -20,29 +20,47 @@ export const MarketPricesScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchMarketPrices();
-  }, []);
+    if (locationCoords) {
+      fetchMarketPrices();
+    }
+  }, [locationCoords]);
 
   const { locationCoords } = useLocation();
   console.log("MarketPricesScreen locationCoords:", locationCoords);
 
   const fetchMarketPrices = async () => {
     try {
+      if (!locationCoords) {
+        console.log("📍 Location not available yet");
+        return;
+      }
+      const { latitude, longitude } = locationCoords;
       const response = await fetch(
-        `${API_URL}/api/market`
+        `${API_URL}/api/market?lat=${latitude}&lon=${longitude}&limit=10`
       );
-
       const data = await response.json();
-      console.log(JSON.stringify(data, null, 2));
-
+      console.log(
+        "📊 Market API Response:",
+        JSON.stringify(data, null, 2)
+      );
       if (data.success) {
         setMarketData({
-          foodCrops: data.foodCrops,
-          cashCrops: data.cashCrops,
+          foodCrops: data.foodCrops || [],
+          cashCrops: data.cashCrops || [],
+        });
+      } else {
+        console.log("❌ Market API Error:", data.message);
+        setMarketData({
+          foodCrops: [],
+          cashCrops: [],
         });
       }
     } catch (error) {
-      console.log(error);
+      console.error("❌ Market Fetch Error:", error);
+      setMarketData({
+        foodCrops: [],
+        cashCrops: [],
+      });
     } finally {
       setLoading(false);
     }

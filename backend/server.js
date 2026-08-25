@@ -2,8 +2,6 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import bodyParser from "body-parser";
-import agriData from "./SampleDB/agriShop.json" with { type: "json" };
-import marketPrices from "./SampleDB/marketPrice.json" with { type: "json" };
 import axios from "axios";
 import { askGemini } from "./services/gemini.js";
 import multer from "multer";
@@ -19,6 +17,7 @@ const upload = multer({
 });
 
 const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL;
 const app = express();
 
 app.use(cors());
@@ -49,38 +48,112 @@ function getDistance(lat1, lon1, lat2, lon2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-app.get("/api/nearby/agri-shops", (req, res) => {
-     console.log("Nearby shops endpoint hit", req.query);
+app.get("/api/nearby/agri-shops", async (req, res) => {
+    console.log("Nearby agri-shops endpoint hit:", req.query);
 
-    const { lat, lon } = req.query;
+    try {
+        const { lat, lon } = req.query;
 
-    if (!lat || !lon) {
-        return res.status(400).json({
-            message: "Latitude and Longitude are required."
+        if (!lat || !lon) {
+            return res.status(400).json({
+                success: false,
+                message: "Latitude and Longitude are required."
+            });
+        }
+
+        const latitude = Number(lat);
+        const longitude = Number(lon);
+
+        if (
+            !Number.isFinite(latitude) ||
+            !Number.isFinite(longitude) ||
+            latitude < -90 ||
+            latitude > 90 ||
+            longitude < -180 ||
+            longitude > 180
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid latitude or longitude."
+            });
+        }
+
+        const response = await axios.post(
+            "https://places.googleapis.com/v1/places:searchText",
+            {
+                textQuery: "agricultural supply stores",
+                pageSize: 20,
+
+                locationBias: {
+                    circle: {
+                        center: {
+                            latitude,
+                            longitude
+                        },
+                        radius: 5000
+                    }
+                },
+
+                rankPreference: "DISTANCE"
+            },
+            {
+                headers: {
+                    "Content-Type": "application/json",
+
+                    "X-Goog-Api-Key":
+                        process.env.GOOGLE_PLACES_API_KEY,
+
+                    "X-Goog-FieldMask": [
+                        "places.id",
+                        "places.displayName",
+                        "places.formattedAddress",
+                        "places.location",
+                        "places.googleMapsUri"
+                    ].join(",")
+                }
+            }
+        );
+
+        const places = response.data.places || [];
+
+        const shops = places
+            .filter(place => place.location)
+            .map(place => ({
+                id: place.id,
+
+                name:
+                    place.displayName?.text ||
+                    "Unknown Shop",
+
+                address:
+                    place.formattedAddress ||
+                    "",
+
+                latitude:
+                    place.location.latitude,
+
+                longitude:
+                    place.location.longitude,
+
+                googleMapsUrl:
+                    place.googleMapsUri ||
+                    ""
+            }));
+
+        res.json(shops);
+
+    } catch (error) {
+
+        console.error(
+            "Google Places API Error:",
+            error.response?.data || error.message
+        );
+
+        res.status(500).json({
+            success: false,
+            message: "Unable to fetch nearby agricultural shops."
         });
     }
-
-    const nearby = agriData
-        .map(shop => {
-
-            const distance = getDistance(
-                Number(lat),
-                Number(lon),
-                shop.latitude,
-                shop.longitude
-            );
-
-            return {
-                ...shop,
-                distance: distance.toFixed(2)
-            };
-
-        })
-        .filter(shop => Number(shop.distance) <= 5)
-        .sort((a, b) => a.distance - b.distance);
-
-    res.json(nearby);
-
 });
 
 app.get("/api/weather", async(req, res) => {
@@ -204,35 +277,152 @@ app.get("/api/weather/forecast", async (req, res) => {
     }
 });
 
-app.get("/api/market", (req, res) => {
-  const foodCrops = marketPrices.foodCrops.map(crop => ({
-    ...crop,
-    change: crop.todayPrice - crop.yesterdayPrice,
-    changeType:
-      crop.todayPrice > crop.yesterdayPrice
-        ? "up"
-        : crop.todayPrice < crop.yesterdayPrice
-        ? "down"
-        : "same"
-  }));
+app.get("/api/market", async (req, res) => {
+    console.log("Market prices endpoint hit:", req.query);
 
-  const cashCrops = marketPrices.cashCrops.map(crop => ({
-    ...crop,
-    change: crop.todayPrice - crop.yesterdayPrice,
-    changeType:
-      crop.todayPrice > crop.yesterdayPrice
-        ? "up"
-        : crop.todayPrice < crop.yesterdayPrice
-        ? "down"
-        : "same"
-  }));
+    try {
+        const { lat, lon, state, district, commodity } = req.query;
 
-  res.json({
-    success: true,
-    lastUpdated: new Date().toISOString().split("T")[0],
-    foodCrops,
-    cashCrops
-  });
+        if (!lat || !lon) {
+            return res.status(400).json({
+                success: false,
+                message: "Latitude and Longitude are required."
+            });
+        }
+
+        const latitude = Number(lat);
+        const longitude = Number(lon);
+
+        if (
+            !Number.isFinite(latitude) ||
+            !Number.isFinite(longitude) ||
+            latitude < -90 ||
+            latitude > 90 ||
+            longitude < -180 ||
+            longitude > 180
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid latitude or longitude."
+            });
+        }
+
+        let farmerState = state;
+        let farmerDistrict = district;
+
+        if (!farmerState || !farmerDistrict) {
+
+            const geoResponse = await axios.get(
+                "https://nominatim.openstreetmap.org/reverse",
+                {
+                    params: {
+                        lat: latitude,
+                        lon: longitude,
+                        format: "json",
+                        zoom: 10
+                    },
+                    headers: {
+                        "User-Agent": "EarthwormAI/1.0"
+                    }
+                }
+            );
+
+            const address = geoResponse.data.address || {};
+
+            farmerState = farmerState || address.state;
+            farmerDistrict =
+                farmerDistrict ||
+                address.state_district ||
+                address.district ||
+                address.county;
+        }
+
+        console.log("Detected location:", {
+            state: farmerState,
+            district: farmerDistrict
+        });
+
+        if (!farmerState) {
+            return res.status(404).json({
+                success: false,
+                message: "Unable to determine state from location."
+            });
+        }
+
+        const params = {
+            "api-key": process.env.DATA_GOV_API_KEY,
+            format: "json",
+            limit: 50,
+
+            "filters[state.keyword]": farmerState
+        };
+
+        if (farmerDistrict) {
+            params["filters[district]"] = farmerDistrict;
+        }
+
+        if (commodity) {
+            params["filters[commodity]"] = commodity;
+        }
+
+        const marketResponse = await axios.get(
+            "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070",
+            {
+                params
+            }
+        );
+
+        const records = marketResponse.data.records || [];
+
+        const marketPrices = records.map(item => ({
+            state: item.state,
+            district: item.district,
+            market: item.market,
+            commodity: item.commodity,
+            variety: item.variety,
+            grade: item.grade,
+
+            arrivalDate: item.arrival_date,
+
+            minPrice: Number(item.min_price),
+            maxPrice: Number(item.max_price),
+            modalPrice: Number(item.modal_price),
+
+            unit: "₹/Quintal"
+        }));
+
+        res.json({
+            success: true,
+
+            location: {
+                latitude,
+                longitude,
+                state: farmerState,
+                district: farmerDistrict || null
+            },
+
+            lastUpdated:
+                records.length > 0
+                    ? records[0].arrival_date
+                    : null,
+
+            count: marketPrices.length,
+
+            data: marketPrices
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Market API Error:",
+            error.response?.data || error.message
+        );
+
+        res.status(500).json({
+            success: false,
+            message: "Unable to fetch market prices."
+        });
+    }
 });
 
 app.post("/api/chat", async (req, res) => {
@@ -318,7 +508,7 @@ app.post(
                     );
                     const diseaseResponse =
                         await axios.post(
-                            "http://192.168.137.198:8000/predict",
+                            `${AI_SERVICE_URL}/predict`,
                             form,
                             {
                                 headers: form.getHeaders(),

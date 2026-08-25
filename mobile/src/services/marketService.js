@@ -1,4 +1,3 @@
-// Market Mandi Prices API Service (Placeholder for backend connection)
 import { MARKET_CROPS } from '../constants/mockData';
 import { fetchApi } from './api';
 
@@ -9,7 +8,6 @@ export const marketService = {
    * @param {string} category 
    */
   getMarketPrices: async (query = '', category = 'All') => {
-    // BACKEND API ENDPOINT: GET /market/prices?query={query}&category={category}
     console.log(`[Backend Integration Point] Fetching Mandi prices query: "${query}", category: "${category}"`);
     await fetchApi(`/market/prices?query=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}`);
     
@@ -31,7 +29,6 @@ export const marketService = {
    * @param {string} cropId 
    */
   getCropPriceComparison: async (cropId) => {
-    // BACKEND API ENDPOINT: GET /market/compare?cropId={cropId}
     console.log(`[Backend Integration Point] Comparing Mandi prices for crop ID: ${cropId}`);
     await fetchApi(`/market/compare?cropId=${cropId}`);
     const crop = MARKET_CROPS.find((c) => c.id === cropId) || MARKET_CROPS[0];

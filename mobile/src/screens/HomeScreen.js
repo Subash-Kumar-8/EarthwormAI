@@ -7,6 +7,9 @@ import EarthwormLogo from '../components/EarthwormLogo';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { FERTILIZER_STORES, HOME_WEATHER } from '../constants/mockData';
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { useLocation } from '../context/locationContext';
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const getWeatherIcon = (condition) => {
   switch (condition?.toLowerCase()) {
@@ -45,7 +48,7 @@ export const HomeScreen = ({ navigation }) => {
     condition: HOME_WEATHER.condition,
     description: "",
   });
-  const [locationCoords, setLocationCoords] = useState(null);
+  const { locationCoords, setLocationCoords } = useLocation();
   const [isLocating, setIsLocating] = useState(false);
   const [nearbyShops, setNearbyShops] = useState([]);
   const handleUpdateLocation = async () => {
@@ -89,7 +92,7 @@ export const HomeScreen = ({ navigation }) => {
     try {
       console.log("🏪 Fetching nearby agri shops...");
       const response = await fetch(
-        `http://192.168.137.198:3001/api/nearby/agri-shops?lat=${latitude}&lon=${longitude}`
+        `${API_URL}/api/nearby/agri-shops?lat=${latitude}&lon=${longitude}`
       );
       const shops = await response.json();
       setNearbyShops(shops);
@@ -100,7 +103,7 @@ export const HomeScreen = ({ navigation }) => {
     try {
       console.log("🌦 Fetching weather...");
       const weatherResponse = await fetch(
-        `http://192.168.137.198:3001/api/weather?lat=${latitude}&lon=${longitude}`
+        `${API_URL}/api/weather?lat=${latitude}&lon=${longitude}`
       );
       const weatherData = await weatherResponse.json();
       if (weatherData.success) {

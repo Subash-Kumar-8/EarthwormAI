@@ -3,12 +3,6 @@ import { USER_PROFILE } from '../constants/mockData';
 import { fetchApi } from './api';
 
 export const authService = {
-  /**
-   * TODO: BACKEND INTEGRATION POINT - Register Farmer
-   * REST Endpoint: POST /api/v1/auth/register
-   * Request Payload: { name, phone, email, password }
-   * Response Contract: { success: boolean, token: string, user: object }
-   */
   registerFarmer: async (farmerData) => {
     console.log('[Backend Contract Point] Register payload:', farmerData);
     
@@ -26,13 +20,6 @@ export const authService = {
       },
     };
   },
-
-  /**
-   * TODO: BACKEND INTEGRATION POINT - Farmer Login
-   * REST Endpoint: POST /api/v1/auth/login
-   * Request Payload: { username, password }
-   * Response Contract: { success: boolean, token: string, user: object }
-   */
   loginWithPassword: async (username, password) => {
     console.log('[Backend Contract Point] Login username:', username);
     
@@ -47,21 +34,11 @@ export const authService = {
       },
     };
   },
-
-  /**
-   * TODO: BACKEND INTEGRATION POINT - Phone OTP Login
-   * REST Endpoint: POST /api/v1/auth/request-otp
-   */
   requestOTP: async (phoneNumber) => {
     console.log('[Backend Contract Point] Requesting OTP for:', phoneNumber);
     await fetchApi('/auth/request-otp', { method: 'POST', body: { phone: phoneNumber } });
     return { success: true, message: 'OTP sent to ' + phoneNumber };
   },
-
-  /**
-   * TODO: BACKEND INTEGRATION POINT - Verify OTP
-   * REST Endpoint: POST /api/v1/auth/verify-otp
-   */
   verifyOTP: async (phoneNumber, otp) => {
     console.log('[Backend Contract Point] Verifying OTP:', otp);
     await fetchApi('/auth/verify-otp', { method: 'POST', body: { phone: phoneNumber, otp } });

@@ -12,6 +12,8 @@ import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useVoiceContext } from '../context/VoiceContext';
 import { cropService } from '../services/cropService';
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL
+
 const VoiceNotePlayer = ({ audioUri, durationSeconds = 3 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const soundRef = useRef(null);
@@ -235,7 +237,7 @@ export const AIAssistantScreen = ({ navigation, route }) => {
 
       console.log("Uploading audio...");
 
-      const response = await fetch("http://192.168.137.198:3001/api/stt", {
+      const response = await fetch(`${API_URL}/api/stt`, {
         method: "POST",
         body: formData,
       });

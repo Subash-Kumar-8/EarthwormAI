@@ -5,6 +5,8 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import ScreenWrapper from '../components/ScreenWrapper';
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
 const getWeatherIcon = (condition) => {
   switch (condition?.toLowerCase()) {
     case "clear":
@@ -52,10 +54,10 @@ export const WeatherAdvisoryScreen = ({ navigation }) => {
       const { latitude, longitude } = location.coords;
       const [currentRes, forecastRes] = await Promise.all([
         fetch(
-          `http://192.168.137.198:3001/api/weather?lat=${latitude}&lon=${longitude}`
+          `${API_URL}/api/weather?lat=${latitude}&lon=${longitude}`
         ),
         fetch(
-          `http://192.168.137.198:3001/api/weather/forecast?lat=${latitude}&lon=${longitude}`
+          `${API_URL}/api/weather/forecast?lat=${latitude}&lon=${longitude}`
         ),
       ]);
       const current = await currentRes.json();

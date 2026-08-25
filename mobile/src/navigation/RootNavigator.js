@@ -2,6 +2,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { LocationProvider } from '../context/locationContext';
 
 import LanguageSelectionScreen from '../screens/LanguageSelectionScreen';
 import LoginScreen from '../screens/LoginScreen';
@@ -42,10 +43,13 @@ export const RootNavigator = () => {
       >
         {isAuthenticated ? (
           <>
-            <Stack.Screen
-              name="MainApp"
-              component={BottomTabNavigator}
-            />
+            <Stack.Screen name="MainApp">
+              {() => (
+                <LocationProvider>
+                  <BottomTabNavigator />
+                </LocationProvider>
+              )}
+            </Stack.Screen>
             <Stack.Screen
               name="DiseaseDetectionScreen"
               component={DiseaseDetectionScreen}

@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const API = "http://192.168.137.198:3001/api";
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
+const API = `${API_URL}/api`;
 
 export const cropService = {
 

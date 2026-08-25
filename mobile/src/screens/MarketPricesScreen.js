@@ -4,6 +4,9 @@ import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 
 import ScreenWrapper from '../components/ScreenWrapper';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { Alert } from "react-native";
+import { useLocation } from '../context/locationContext';
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export const MarketPricesScreen = ({ navigation }) => {
   const [selectedCategory, setSelectedCategory] = useState('Food Crops');
@@ -20,10 +23,13 @@ export const MarketPricesScreen = ({ navigation }) => {
     fetchMarketPrices();
   }, []);
 
+  const { locationCoords } = useLocation();
+  console.log("MarketPricesScreen locationCoords:", locationCoords);
+
   const fetchMarketPrices = async () => {
     try {
       const response = await fetch(
-        "http://192.168.137.198:3001/api/market"
+        `${API_URL}/api/market`
       );
 
       const data = await response.json();

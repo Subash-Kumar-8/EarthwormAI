@@ -529,6 +529,27 @@ app.get("/api/market", async (req, res) => {
                 );
             previousRecords =
                 previousResponse.data.records || [];
+            console.log("========== PREVIOUS DAY DEBUG ==========");
+
+            console.log("Requested previous date:", previousDate);
+
+            console.log(
+                "Returned previous records:",
+                previousRecords.length
+            );
+
+            console.log(
+                previousRecords.slice(0, 10).map(item => ({
+                    market: item.market,
+                    commodity: item.commodity,
+                    variety: item.variety,
+                    grade: item.grade,
+                    arrival_date: item.arrival_date,
+                    modal_price: item.modal_price
+                }))
+            );
+
+            console.log("========================================");
             console.log(
                 `Previous day records: ${previousRecords.length}`
             );

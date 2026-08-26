@@ -36,7 +36,7 @@ export const MarketPricesScreen = ({ navigation }) => {
       }
       const { latitude, longitude } = locationCoords;
       const response = await fetch(
-        `${API_URL}/api/market?lat=${latitude}&lon=${longitude}&limit=10`
+        `${API_URL}/api/market?lat=${latitude}&lon=${longitude}&limit=50`
       );
       const data = await response.json();
       console.log(

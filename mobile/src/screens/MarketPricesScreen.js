@@ -23,11 +23,13 @@ export const MarketPricesScreen = ({ navigation }) => {
       if (!locationCoords) return;
       const { latitude, longitude } = locationCoords;
       if (lastMarketLocation.current) {
-          const { latitude: lastLat, longitude: lastLon } =
-              lastMarketLocation.current;
+          const {
+              latitude: lastLat,
+              longitude: lastLon
+          } = lastMarketLocation.current;
           const latDiff = Math.abs(latitude - lastLat);
           const lonDiff = Math.abs(longitude - lastLon);
-          if (latDiff < 0.001 && lonDiff < 0.001) {
+          if (latDiff < 0.005 && lonDiff < 0.005) {
               return;
           }
       }
@@ -80,13 +82,6 @@ export const MarketPricesScreen = ({ navigation }) => {
       const matchesSearch = crop.name
         .toLowerCase()
         .includes(searchQuery.toLowerCase());
-      const matchesFilter =
-        filterType === "All"
-          ? true
-          : filterType === "Increased"
-          ? crop.changeType === "up"
-          : crop.changeType === "down";
-      return matchesSearch && matchesFilter;
     });
 
     filteredCrops.forEach((item) => {

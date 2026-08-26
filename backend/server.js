@@ -363,17 +363,14 @@ app.get("/api/market", async (req, res) => {
         const cachedData = MarketCache.get(cacheKey);
         if (
             cachedData &&
-            Date.now() - cachedData.timestamp <
-                Market_Cache_Duration
+            Date.now() - cachedData.timestamp < Market_Cache_Duration
         ) {
-            console.log(
-                "Returning cached market data:",
-                cacheKey
-            );
+            console.log("✅ Returning cached market data.");
             return res.json(cachedData.data);
         }
-        const classifyCrop = (commodityName) => {
-            const crop = (commodityName || "")
+        console.log("🌐 Fetching fresh market data from data.gov.in");
+        const classifyCrop = (commodity) => {
+            const crop = (commodity || "")
                 .trim()
                 .toLowerCase();
             if (
@@ -396,21 +393,16 @@ app.get("/api/market", async (req, res) => {
         const MARKET_API =
             "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070";
         const baseParams = {
-            "api-key":
-                process.env.DATA_GOV_API_KEY,
-
+            "api-key": process.env.DATA_GOV_API_KEY,
             format: "json",
             limit: requestedLimit,
-            "filters[state.keyword]":
-                farmerState
+            "filters[state.keyword]": farmerState
         };
         if (farmerDistrict) {
-            baseParams["filters[district]"] =
-                farmerDistrict;
+            baseParams["filters[district]"] = farmerDistrict;
         }
         if (commodity) {
-            baseParams["filters[commodity]"] =
-                commodity;
+            baseParams["filters[commodity]"] = commodity;
         }
         let marketResponse;
         try {
@@ -425,34 +417,25 @@ app.get("/api/market", async (req, res) => {
             console.error(
                 "Market API error:",
                 error.response?.status,
-                error.response?.data ||
-                    error.message
+                error.response?.data || error.message
             );
-            if (
-                error.response?.status === 429
-            ) {
+            if (error.response?.status === 429) {
                 return res.status(429).json({
                     success: false,
                     message:
                         "Market service is temporarily busy. Please try again shortly."
                 });
             }
-            if (
-                error.code === "ECONNABORTED" ||
-                error.message?.includes("timeout")
-            ) {
-                return res.status(504).json({
-                    success: false,
-                    message:
-                        "Market service is taking too long to respond. Please try again shortly."
-                });
-            }
-            throw error;
+            return res.status(502).json({
+                success: false,
+                message:
+                    "Unable to fetch market prices from the government data service."
+            });
         }
         const records =
-            marketResponse.data.records || [];
+            marketResponse.data?.records || [];
         console.log(
-            `Market records received: ${records.length}`
+            `📊 Market records received: ${records.length}`
         );
         if (records.length === 0) {
             const emptyResponse = {
@@ -461,36 +444,31 @@ app.get("/api/market", async (req, res) => {
                     latitude,
                     longitude,
                     state: farmerState,
-                    district:
-                        farmerDistrict || null
+                    district: farmerDistrict || null
                 },
                 lastUpdated: null,
                 count: 0,
                 foodCrops: [],
                 cashCrops: []
             };
-            MarketCache.set(
-                cacheKey,
-                {
-                    timestamp: Date.now(),
-                    data: emptyResponse
-                }
-            );
+            MarketCache.set(cacheKey, {
+                timestamp: Date.now(),
+                data: emptyResponse
+            });
             return res.json(emptyResponse);
         }
         const marketPrices = records.map(
             (item, index) => {
-                const price = Number(
-                    item.modal_price
-                );
+                const todayPrice =
+                    Number(item.modal_price);
                 return {
                     id:
                         `${item.market}-${item.commodity}-${index}`,
                     name:
                         item.commodity,
                     todayPrice:
-                        Number.isFinite(price)
-                            ? price
+                        Number.isFinite(todayPrice)
+                            ? todayPrice
                             : 0,
                     unit:
                         "Quintal",
@@ -508,14 +486,12 @@ app.get("/api/market", async (req, res) => {
         const foodCrops =
             marketPrices.filter(
                 item =>
-                    classifyCrop(item.name) ===
-                    "food"
+                    classifyCrop(item.name) === "food"
             );
         const cashCrops =
             marketPrices.filter(
                 item =>
-                    classifyCrop(item.name) ===
-                    "cash"
+                    classifyCrop(item.name) === "cash"
             );
         console.log(
             "🍚 Food crops:",
@@ -525,62 +501,35 @@ app.get("/api/market", async (req, res) => {
             "💰 Cash crops:",
             cashCrops.length
         );
-        const latestDate =
-            records
-                .map(item => item.arrival_date)
-                .filter(Boolean)
-                .sort((a, b) => {
-                    const [d1, m1, y1] =
-                        a.split("/").map(Number);
-                    const [d2, m2, y2] =
-                        b.split("/").map(Number);
-                    return (
-                        new Date(
-                            y2,
-                            m2 - 1,
-                            d2
-                        ) -
-                        new Date(
-                            y1,
-                            m1 - 1,
-                            d1
-                        )
-                    );
-                })[0] || null;
         const responseData = {
             success: true,
             location: {
                 latitude,
                 longitude,
                 state: farmerState,
-                district:
-                    farmerDistrict || null
+                district: farmerDistrict || null
             },
             lastUpdated:
-                latestDate,
+                records[0]?.arrival_date || null,
             count:
                 marketPrices.length,
             foodCrops,
             cashCrops
         };
-        MarketCache.set(
-            cacheKey,
-            {
-                timestamp: Date.now(),
-                data: responseData
-            }
-        );
+        MarketCache.set(cacheKey, {
+            timestamp: Date.now(),
+            data: responseData
+        });
         console.log(
-            "Market data cached:",
+            "💾 Market data cached:",
             cacheKey
         );
         return res.json(responseData);
     } catch (error) {
         console.error(
-            "Market API Error:",
+            "❌ Market API Error:",
             error.response?.status,
-            error.response?.data ||
-                error.message
+            error.response?.data || error.message
         );
         return res.status(500).json({
             success: false,

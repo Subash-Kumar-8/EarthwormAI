@@ -313,7 +313,6 @@ app.get("/api/market", async (req, res) => {
         }
         let farmerState = state;
         let farmerDistrict = district;
-
         if (!farmerState || !farmerDistrict) {
             const geoResponse = await axios.get(
                 "https://nominatim.openstreetmap.org/reverse",
@@ -330,8 +329,7 @@ app.get("/api/market", async (req, res) => {
                     timeout: 10000
                 }
             );
-            const address =
-                geoResponse.data.address || {};
+            const address = geoResponse.data.address || {};
             farmerState =
                 farmerState || address.state;
             farmerDistrict =
@@ -350,11 +348,10 @@ app.get("/api/market", async (req, res) => {
                 message: "Unable to determine state from location."
             });
         }
-        const requestedLimit =
-            Math.min(
-                Number(req.query.limit) || 10,
-                50
-            );
+        const requestedLimit = Math.min(
+            Number(req.query.limit) || 10,
+            50
+        );
         const cacheKey = [
             farmerState,
             farmerDistrict || "all",
@@ -363,26 +360,22 @@ app.get("/api/market", async (req, res) => {
         ]
             .join("-")
             .toLowerCase();
-        const cachedData =
-            MarketCache.get(cacheKey);
+        const cachedData = MarketCache.get(cacheKey);
         if (
             cachedData &&
             Date.now() - cachedData.timestamp <
                 Market_Cache_Duration
         ) {
             console.log(
-                "Returning cached market data."
+                "Returning cached market data:",
+                cacheKey
             );
-            return res.json(
-                cachedData.data
-            );
+            return res.json(cachedData.data);
         }
-        const classifyCrop = (commodity) => {
-            const crop =
-                (commodity || "")
-                    .trim()
-                    .toLowerCase();
-
+        const classifyCrop = (commodityName) => {
+            const crop = (commodityName || "")
+                .trim()
+                .toLowerCase();
             if (
                 crop.includes("cotton") ||
                 crop.includes("sugarcane") ||
@@ -405,6 +398,7 @@ app.get("/api/market", async (req, res) => {
         const baseParams = {
             "api-key":
                 process.env.DATA_GOV_API_KEY,
+
             format: "json",
             limit: requestedLimit,
             "filters[state.keyword]":
@@ -418,22 +412,21 @@ app.get("/api/market", async (req, res) => {
             baseParams["filters[commodity]"] =
                 commodity;
         }
-        let todayResponse;
+        let marketResponse;
         try {
-            todayResponse = await axios.get(
+            marketResponse = await axios.get(
                 MARKET_API,
                 {
                     params: baseParams,
                     timeout: 15000
                 }
             );
-        }
-        catch (error) {
+        } catch (error) {
             console.error(
-                "Today's market API error:",
+                "Market API error:",
                 error.response?.status,
                 error.response?.data ||
-                error.message
+                    error.message
             );
             if (
                 error.response?.status === 429
@@ -444,14 +437,24 @@ app.get("/api/market", async (req, res) => {
                         "Market service is temporarily busy. Please try again shortly."
                 });
             }
+            if (
+                error.code === "ECONNABORTED" ||
+                error.message?.includes("timeout")
+            ) {
+                return res.status(504).json({
+                    success: false,
+                    message:
+                        "Market service is taking too long to respond. Please try again shortly."
+                });
+            }
             throw error;
         }
-        const todayRecords =
-            todayResponse.data.records || [];
+        const records =
+            marketResponse.data.records || [];
         console.log(
-            `Today's market records: ${todayRecords.length}`
+            `Market records received: ${records.length}`
         );
-        if (todayRecords.length === 0) {
+        if (records.length === 0) {
             const emptyResponse = {
                 success: true,
                 location: {
@@ -462,7 +465,6 @@ app.get("/api/market", async (req, res) => {
                         farmerDistrict || null
                 },
                 lastUpdated: null,
-                previousDate: null,
                 count: 0,
                 foodCrops: [],
                 cashCrops: []
@@ -474,193 +476,46 @@ app.get("/api/market", async (req, res) => {
                     data: emptyResponse
                 }
             );
-            return res.json(
-                emptyResponse
-            );
+            return res.json(emptyResponse);
         }
-        const latestDate =
-            todayRecords[0].arrival_date;
-        const [
-            day,
-            month,
-            year
-        ] = latestDate.split("/");
-        const latestDateObj =
-            new Date(
-                `${year}-${month}-${day}T00:00:00`
-            );
-        latestDateObj.setDate(
-            latestDateObj.getDate() - 1
-        );
-        const previousDay =
-            String(
-                latestDateObj.getDate()
-            ).padStart(2, "0");
-        const previousMonth =
-            String(
-                latestDateObj.getMonth() + 1
-            ).padStart(2, "0");
-        const previousYear =
-            latestDateObj.getFullYear();
-        const previousDate =
-            `${previousDay}/${previousMonth}/${previousYear}`;
-        console.log(
-            "Today's date:",
-            latestDate
-        );
-        console.log(
-            "Previous date:",
-            previousDate
-        );
-        let previousRecords = [];
-        try {
-            const previousParams = {
-                ...baseParams,
-                "filters[arrival_date]":
-                    previousDate
-            };
-            const previousResponse =
-                await axios.get(
-                    MARKET_API,
-                    {
-                        params: previousParams,
-                        timeout: 15000
-                    }
+        const marketPrices = records.map(
+            (item, index) => {
+                const price = Number(
+                    item.modal_price
                 );
-            previousRecords =
-                previousResponse.data.records || [];
-            console.log("========== PREVIOUS DAY DEBUG ==========");
-
-            console.log("Requested previous date:", previousDate);
-
-            console.log(
-                "Returned previous records:",
-                previousRecords.length
-            );
-
-            console.log(
-                previousRecords.slice(0, 10).map(item => ({
-                    market: item.market,
-                    commodity: item.commodity,
-                    variety: item.variety,
-                    grade: item.grade,
-                    arrival_date: item.arrival_date,
-                    modal_price: item.modal_price
-                }))
-            );
-
-            console.log("========================================");
-            console.log(
-                `Previous day records: ${previousRecords.length}`
-            );
-        }
-        catch (error) {
-            console.error(
-                "Previous day market API error:",
-                error.response?.status,
-                error.response?.data ||
-                error.message
-            );
-            previousRecords = [];
-        }
-        const previousPriceMap =
-            new Map();
-        previousRecords.forEach(
-            item => {
-                const key = [
-                    item.market,
-                    item.commodity,
-                    item.variety,
-                    item.grade
-                ]
-                    .map(value =>
-                        (value || "")
-                            .trim()
-                            .toLowerCase()
-                    )
-                    .join("|");
-                previousPriceMap.set(
-                    key,
-                    Number(item.modal_price)
-                );
+                return {
+                    id:
+                        `${item.market}-${item.commodity}-${index}`,
+                    name:
+                        item.commodity,
+                    todayPrice:
+                        Number.isFinite(price)
+                            ? price
+                            : 0,
+                    unit:
+                        "Quintal",
+                    market:
+                        item.market,
+                    variety:
+                        item.variety,
+                    grade:
+                        item.grade,
+                    arrivalDate:
+                        item.arrival_date
+                };
             }
         );
-        const marketPrices =
-            todayRecords.map(
-                (item, index) => {
-                    const key = [
-                        item.market,
-                        item.commodity,
-                        item.variety,
-                        item.grade
-                    ]
-                        .map(value =>
-                            (value || "")
-                                .trim()
-                                .toLowerCase()
-                        )
-                        .join("|");
-                    const todayPrice =
-                        Number(
-                            item.modal_price
-                        );
-                    const previousDayPrice =
-                        previousPriceMap.get(
-                            key
-                        ) ?? null;
-                    let change = 0;
-                    let changeType = "none";
-                    if (
-                        previousDayPrice !== null &&
-                        Number.isFinite(
-                            previousDayPrice
-                        )
-                    ) {
-                        change =
-                            todayPrice -
-                            previousDayPrice;
-                        if (change > 0) {
-                            changeType = "up";
-                        }
-                        else if (change < 0) {
-                            changeType = "down";
-                        }
-                    }
-                    return {
-                        id:
-                            `${item.market}-${item.commodity}-${index}`,
-                        name:
-                            item.commodity,
-                        todayPrice,
-                        previousDayPrice,
-                        change,
-                        changeType,
-                        unit:
-                            "Quintal",
-                        market:
-                            item.market,
-                        variety:
-                            item.variety,
-                        grade:
-                            item.grade,
-                        arrivalDate:
-                            item.arrival_date
-                    };
-                }
-            );
         const foodCrops =
             marketPrices.filter(
                 item =>
-                    classifyCrop(
-                        item.name
-                    ) === "food"
+                    classifyCrop(item.name) ===
+                    "food"
             );
         const cashCrops =
             marketPrices.filter(
                 item =>
-                    classifyCrop(
-                        item.name
-                    ) === "cash"
+                    classifyCrop(item.name) ===
+                    "cash"
             );
         console.log(
             "🍚 Food crops:",
@@ -670,6 +525,28 @@ app.get("/api/market", async (req, res) => {
             "💰 Cash crops:",
             cashCrops.length
         );
+        const latestDate =
+            records
+                .map(item => item.arrival_date)
+                .filter(Boolean)
+                .sort((a, b) => {
+                    const [d1, m1, y1] =
+                        a.split("/").map(Number);
+                    const [d2, m2, y2] =
+                        b.split("/").map(Number);
+                    return (
+                        new Date(
+                            y2,
+                            m2 - 1,
+                            d2
+                        ) -
+                        new Date(
+                            y1,
+                            m1 - 1,
+                            d1
+                        )
+                    );
+                })[0] || null;
         const responseData = {
             success: true,
             location: {
@@ -681,7 +558,6 @@ app.get("/api/market", async (req, res) => {
             },
             lastUpdated:
                 latestDate,
-            previousDate,
             count:
                 marketPrices.length,
             foodCrops,
@@ -698,18 +574,15 @@ app.get("/api/market", async (req, res) => {
             "Market data cached:",
             cacheKey
         );
-        res.json(
-            responseData
-        );
-    }
-    catch (error) {
+        return res.json(responseData);
+    } catch (error) {
         console.error(
             "Market API Error:",
             error.response?.status,
             error.response?.data ||
-            error.message
+                error.message
         );
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message:
                 "Unable to fetch market prices."

@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
@@ -11,7 +11,6 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL;
 export const MarketPricesScreen = ({ navigation }) => {
   const [selectedCategory, setSelectedCategory] = useState('Food Crops');
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState("All");
   const [marketData, setMarketData] = useState({
     foodCrops: [],
     cashCrops: [],
@@ -19,22 +18,36 @@ export const MarketPricesScreen = ({ navigation }) => {
 
   const [loading, setLoading] = useState(true);
 
+  const lastMarketLocation = useRef(null);
   useEffect(() => {
-    if (locationCoords) {
-      fetchMarketPrices();
-    }
+      if (!locationCoords) return;
+      const { latitude, longitude } = locationCoords;
+      if (lastMarketLocation.current) {
+          const { latitude: lastLat, longitude: lastLon } =
+              lastMarketLocation.current;
+          const latDiff = Math.abs(latitude - lastLat);
+          const lonDiff = Math.abs(longitude - lastLon);
+          if (latDiff < 0.001 && lonDiff < 0.001) {
+              return;
+          }
+      }
+      lastMarketLocation.current = {
+          latitude,
+          longitude
+      };
+      fetchMarketPrices(latitude, longitude);
   }, [locationCoords]);
 
   const { locationCoords } = useLocation();
   console.log("MarketPricesScreen locationCoords:", locationCoords);
 
-  const fetchMarketPrices = async () => {
+  const fetchMarketPrices = async (latitude, longitude) => {
     try {
-      if (!locationCoords) {
+      if (!latitude || !longitude) {
         console.log("📍 Location not available yet");
         return;
       }
-      const { latitude, longitude } = locationCoords;
+      setLoading(true);
       const response = await fetch(
         `${API_URL}/api/market?lat=${latitude}&lon=${longitude}&limit=50`
       );
@@ -50,17 +63,9 @@ export const MarketPricesScreen = ({ navigation }) => {
         });
       } else {
         console.log("❌ Market API Error:", data.message);
-        setMarketData({
-          foodCrops: [],
-          cashCrops: [],
-        });
       }
     } catch (error) {
       console.error("❌ Market Fetch Error:", error);
-      setMarketData({
-        foodCrops: [],
-        cashCrops: [],
-      });
     } finally {
       setLoading(false);
     }
@@ -84,36 +89,11 @@ export const MarketPricesScreen = ({ navigation }) => {
       return matchesSearch && matchesFilter;
     });
 
-    const openFilter = () => {
-      Alert.alert(
-        "Filter Market Prices",
-        "Choose one",
-        [
-          {
-            text: "All",
-            onPress: () => setFilterType("All")
-          },
-          {
-            text: "Increased",
-            onPress: () => setFilterType("Increased")
-          },
-          {
-            text: "Decreased",
-            onPress: () => setFilterType("Decreased")
-          },
-          {
-            text: "Cancel",
-            style: "cancel"
-          }
-        ]
-      );
-    };
     filteredCrops.forEach((item) => {
       console.log(item.id, item.name);
     });
   return (
     <ScreenWrapper>
-      {/* Back Header matching Figma */}
       <View style={styles.headerRow}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <MaterialCommunityIcons name="chevron-left" size={28} color={COLORS.text} />
@@ -135,16 +115,9 @@ export const MarketPricesScreen = ({ navigation }) => {
         )
       }
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Title & Filter Button Row */}
         <View style={styles.titleFilterRow}>
           <Text style={styles.pageTitle}>Market Prices</Text>
-          <TouchableOpacity activeOpacity={0.8} style={styles.filterPillBtn} onPress={openFilter}>
-            <MaterialCommunityIcons name="tune-variant" size={16} color={COLORS.text} style={{ marginRight: 4 }} />
-            <Text style={styles.filterPillText}>{filterType}</Text>
-          </TouchableOpacity>
         </View>
-
-        {/* Category Pills matching Figma */}
         <View style={styles.categoriesRow}>
           <TouchableOpacity
             style={[styles.categoryPill, selectedCategory === 'Food Crops' && styles.activeCategoryPill]}
@@ -154,7 +127,6 @@ export const MarketPricesScreen = ({ navigation }) => {
               Food Crops
             </Text>
           </TouchableOpacity>
-
           <TouchableOpacity
             style={[styles.categoryPill, selectedCategory === 'Cash Crops' && styles.activeCategoryPill]}
             onPress={() => setSelectedCategory('Cash Crops')}
@@ -164,8 +136,6 @@ export const MarketPricesScreen = ({ navigation }) => {
             </Text>
           </TouchableOpacity>
         </View>
-
-        {/* Search Input matching Figma */}
         <View style={styles.searchBarBox}>
           <MaterialCommunityIcons name="magnify" size={20} color={COLORS.textMuted} />
           <TextInput
@@ -177,48 +147,13 @@ export const MarketPricesScreen = ({ navigation }) => {
           />
           <MaterialCommunityIcons name="chevron-down" size={20} color={COLORS.textMuted} />
         </View>
-
-        {/* Crop Cards List matching Figma */}
         <View style={styles.cropList}>
           {filteredCrops.map((item) => (
             <View key={item.id} style={styles.cropCardItem}>
               <Text style={styles.cropName}>{item.name}</Text>
               <View style={styles.cropRightCol}>
                 <Text style={styles.cropPriceText}>₹{item.todayPrice} ({item.unit})</Text>
-                <View
-                  style={[
-                    styles.changeBadge,
-                    {
-                      backgroundColor:
-                        item.changeType === "up"
-                          ? COLORS.primaryLight
-                          : item.changeType === "down"
-                          ? COLORS.dangerLight
-                          : "#EEEEEE",
-                    }
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.changeBadgeText,
-                      {
-                        color:
-                          item.changeType === "up"
-                            ? COLORS.primary
-                            : item.changeType === "down"
-                            ? COLORS.danger
-                            : COLORS.textSecondary,
-                      }
-                    ]}
-                  >
-                    {item.changeType === "up"
-                      ? `▲ ₹${item.change}`
-                      : item.changeType === "down"
-                      ? `▼ ₹${Math.abs(item.change)}`
-                      : "No Change"
-                    }
-                  </Text>
-                </View>
+                <Text style={styles.marketName}>{item.market}</Text>
               </View>
             </View>
           ))}
@@ -261,7 +196,7 @@ const styles = StyleSheet.create({
   filterPillBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#C2E5D0', // Light green filter pill from Figma
+    backgroundColor: '#C2E5D0',
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: RADIUS.full,
@@ -330,6 +265,12 @@ const styles = StyleSheet.create({
     fontWeight: TYPOGRAPHY.fontWeight.bold,
     color: COLORS.text,
   },
+  marketName: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginTop: 3,
+  },
+
   cropRightCol: {
     alignItems: 'flex-end',
   },

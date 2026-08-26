@@ -49,7 +49,7 @@ function getDistance(lat1, lon1, lat2, lon2) {
 }
 
 const MarketCache = new Map();
-const Market_Cache_Duration = 5 * 60 * 1000;
+const Market_Cache_Duration = 30 * 60 * 1000;
 
 app.get("/api/nearby/agri-shops", async (req, res) => {
     console.log("Nearby agri-shops endpoint hit:", req.query);

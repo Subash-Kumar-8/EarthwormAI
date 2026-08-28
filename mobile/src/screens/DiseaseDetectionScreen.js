@@ -14,8 +14,6 @@ export const DiseaseDetectionScreen = ({ navigation }) => {
   const [selectedImageUri, setSelectedImageUri] = useState(null);
   const [result, setResult] = useState(null);
   const [activeTab, setActiveTab] = useState('chemical');
-
-  // 1. Launch Native Device Camera
   const handleLaunchCamera = async () => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -27,12 +25,10 @@ export const DiseaseDetectionScreen = ({ navigation }) => {
         );
         return;
       }
-
       const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: false, // Direct photo capture (OK / Use Photo)
+        allowsEditing: false,
         quality: 0.8,
       });
-
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setSelectedImageUri(result.assets[0].uri);
         setResult(DISEASE_DETECTION_SAMPLE);
@@ -42,8 +38,6 @@ export const DiseaseDetectionScreen = ({ navigation }) => {
       Alert.alert('Camera Error', 'Could not open device camera. Please try again.');
     }
   };
-
-  // 2. Launch Photo Gallery Library
   const handleLaunchGallery = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();

@@ -8,27 +8,20 @@ import { useAuth } from '../hooks/useAuth';
 
 export const ProfileScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
-  console.log("Current User:", user);
   const activeFarmer = user || USER_PROFILE;
-
   const handleLogout = async () => {
     await logout();
   };
-
   const handleDeleteAccount = async () => {
     await logout();
   };
-
   return (
     <ScreenWrapper withPadding={false} backgroundColor={COLORS.primary}>
-      {/* Top Green Background Section */}
       <View style={styles.topGreenHeader}>
         <Text style={styles.headerTitle}>Profile</Text>
       </View>
-
       {/* Main Profile Body Container */}
       <View style={styles.bodyContainer}>
-        {/* Dynamic User Card Container matching Figma ("Hi, Subash") */}
         <View style={[styles.userCard, SHADOWS.small]}>
           <View style={styles.avatarCircle}>
             <MaterialCommunityIcons name="account-outline" size={44} color={COLORS.text} />

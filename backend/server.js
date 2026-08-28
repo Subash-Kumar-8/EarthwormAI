@@ -86,7 +86,6 @@ app.get("/api/nearby/agri-shops", async (req, res) => {
             {
                 textQuery: "agricultural supply stores",
                 pageSize: 20,
-
                 locationBias: {
                     circle: {
                         center: {
@@ -96,16 +95,12 @@ app.get("/api/nearby/agri-shops", async (req, res) => {
                         radius: 5000
                     }
                 },
-
                 rankPreference: "DISTANCE"
             },
             {
                 headers: {
                     "Content-Type": "application/json",
-
-                    "X-Goog-Api-Key":
-                        process.env.GOOGLE_PLACES_API_KEY,
-
+                    "X-Goog-Api-Key": process.env.GOOGLE_PLACES_API_KEY,
                     "X-Goog-FieldMask": [
                         "places.id",
                         "places.displayName",
@@ -116,42 +111,20 @@ app.get("/api/nearby/agri-shops", async (req, res) => {
                 }
             }
         );
-
         const places = response.data.places || [];
-
         const shops = places
             .filter(place => place.location)
             .map(place => ({
                 id: place.id,
-
-                name:
-                    place.displayName?.text ||
-                    "Unknown Shop",
-
-                address:
-                    place.formattedAddress ||
-                    "",
-
-                latitude:
-                    place.location.latitude,
-
-                longitude:
-                    place.location.longitude,
-
-                googleMapsUrl:
-                    place.googleMapsUri ||
-                    ""
+                name: place.displayName?.text || "Unknown Shop",
+                address: place.formattedAddress || "",
+                latitude: place.location.latitude,
+                longitude: place.location.longitude,
+                googleMapsUrl: place.googleMapsUri || ""
             }));
-
         res.json(shops);
-
     } catch (error) {
-
-        console.error(
-            "Google Places API Error:",
-            error.response?.data || error.message
-        );
-
+        console.error("Google Places API Error:", error.response?.data || error.message);
         res.status(500).json({
             success: false,
             message: "Unable to fetch nearby agricultural shops."
@@ -330,13 +303,8 @@ app.get("/api/market", async (req, res) => {
                 }
             );
             const address = geoResponse.data.address || {};
-            farmerState =
-                farmerState || address.state;
-            farmerDistrict =
-                farmerDistrict ||
-                address.state_district ||
-                address.district ||
-                address.county;
+            farmerState = farmerState || address.state;
+            farmerDistrict = farmerDistrict || address.state_district || address.district || address.county;
         }
         console.log("Detected location:", {
             state: farmerState,
@@ -462,24 +430,17 @@ app.get("/api/market", async (req, res) => {
                 const todayPrice =
                     Number(item.modal_price);
                 return {
-                    id:
-                        `${item.market}-${item.commodity}-${index}`,
-                    name:
-                        item.commodity,
+                    id: `${item.market}-${item.commodity}-${index}`,
+                    name: item.commodity,
                     todayPrice:
                         Number.isFinite(todayPrice)
                             ? todayPrice
                             : 0,
-                    unit:
-                        "Quintal",
-                    market:
-                        item.market,
-                    variety:
-                        item.variety,
-                    grade:
-                        item.grade,
-                    arrivalDate:
-                        item.arrival_date
+                    unit: "Quintal",
+                    market: item.market,
+                    variety: item.variety,
+                    grade: item.grade,
+                    arrivalDate: item.arrival_date
                 };
             }
         );
@@ -493,14 +454,8 @@ app.get("/api/market", async (req, res) => {
                 item =>
                     classifyCrop(item.name) === "cash"
             );
-        console.log(
-            "🍚 Food crops:",
-            foodCrops.length
-        );
-        console.log(
-            "💰 Cash crops:",
-            cashCrops.length
-        );
+        console.log("🍚 Food crops:", foodCrops.length);
+        console.log("💰 Cash crops:",cashCrops.length);
         const responseData = {
             success: true,
             location: {
@@ -509,10 +464,8 @@ app.get("/api/market", async (req, res) => {
                 state: farmerState,
                 district: farmerDistrict || null
             },
-            lastUpdated:
-                records[0]?.arrival_date || null,
-            count:
-                marketPrices.length,
+            lastUpdated: records[0]?.arrival_date || null,
+            count: marketPrices.length,
             foodCrops,
             cashCrops
         };
@@ -520,10 +473,7 @@ app.get("/api/market", async (req, res) => {
             timestamp: Date.now(),
             data: responseData
         });
-        console.log(
-            "💾 Market data cached:",
-            cacheKey
-        );
+        console.log("💾 Market data cached:", cacheKey);
         return res.json(responseData);
     } catch (error) {
         console.error(
@@ -597,6 +547,11 @@ app.post(
             let diseaseResult = null;
 
             if (req.file) {
+                console.log("🖼️ Image received by backend");
+                console.log("📁 File path:", req.file.path);
+                console.log("📄 Original name:", req.file.originalname);
+                console.log("🖼️ MIME type:", req.file.mimetype);
+                console.log("📦 File size:", req.file.size);
                 try {
                     const form = new FormData();
                     form.append(

@@ -23,20 +23,14 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Automatically detect login/logout state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
-        //console.log("Auth Changed:", firebaseUser);
         if (firebaseUser) {
           const idToken = await firebaseUser.getIdToken();
-
-          // Read farmer profile from Firestore
           const userRef = doc(db, "users", firebaseUser.uid);
           const userSnap = await getDoc(userRef);
-
           setToken(idToken);
-
           if (userSnap.exists()) {
             setUser({
               uid: firebaseUser.uid,

@@ -581,11 +581,12 @@ app.post(
 
                 }
                 catch (err) {
-
-                    console.log(
-                        "Disease Model Error:",
-                        err.message
-                    );
+                    console.error("❌ Disease Model Error");
+                    console.error("Status:",err.response?.status);
+                    console.error("Response:",err.response?.data);
+                    console.error("Headers:",err.response?.headers);
+                    console.error("Message:",err.message);
+                    diseaseResult = null;
                 }
                 try {
                     fs.unlinkSync(req.file.path);

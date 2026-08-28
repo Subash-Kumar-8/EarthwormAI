@@ -48,6 +48,71 @@ function getDistance(lat1, lon1, lat2, lon2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+async function predictDisease(filePath, originalName, mimeType) {
+    const MAX_ATTEMPTS = 3;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+            console.log(
+                `🧠 Disease AI request ${attempt}/${MAX_ATTEMPTS}`
+            );
+
+            const form = new FormData();
+
+            form.append(
+                "file",
+                fs.createReadStream(filePath),
+                {
+                    filename: originalName,
+                    contentType: mimeType,
+                }
+            );
+
+            const response = await axios.post(
+                `${AI_SERVICE_URL}/predict`,
+                form,
+                {
+                    headers: form.getHeaders(),
+                    timeout: 90000,
+                }
+            );
+
+            console.log(
+                "✅ Disease AI:",
+                response.data
+            );
+
+            return response.data;
+
+        } catch (error) {
+
+            const status = error.response?.status;
+
+            console.error(
+                `❌ Disease AI attempt ${attempt} failed:`,
+                status || error.message
+            );
+
+            if (
+                attempt === MAX_ATTEMPTS ||
+                ![429, 502, 503, 504].includes(status)
+            ) {
+                throw error;
+            }
+
+            const delay = attempt * 5000;
+
+            console.log(
+                `⏳ Retrying in ${delay / 1000}s...`
+            );
+
+            await new Promise(resolve =>
+                setTimeout(resolve, delay)
+            );
+        }
+    }
+}
+
 const MarketCache = new Map();
 const Market_Cache_Duration = 30 * 60 * 1000;
 
@@ -547,51 +612,19 @@ app.post(
             let diseaseResult = null;
 
             if (req.file) {
-                console.log("🖼️ Image received by backend");
-                console.log("📁 File path:", req.file.path);
-                console.log("📄 Original name:", req.file.originalname);
-                console.log("🖼️ MIME type:", req.file.mimetype);
-                console.log("📦 File size:", req.file.size);
                 try {
-                    const form = new FormData();
-                    form.append(
-                        "file",
-                        fs.createReadStream(req.file.path),
-                        {
-                            filename: req.file.originalname,
-                            contentType: req.file.mimetype,
-                        }
+                    diseaseResult = await predictDisease(
+                        req.file.path,
+                        req.file.originalname,
+                        req.file.mimetype
                     );
-                    const diseaseResponse =
-                        await axios.post(
-                            `${AI_SERVICE_URL}/predict`,
-                            form,
-                            {
-                                headers: form.getHeaders(),
-                            }
-                        );
-
-                    diseaseResult =
-                        diseaseResponse.data;
-
-                    console.log(
-                        "Disease Model Response:",
-                        diseaseResult
-                    );
-
-                }
-                catch (err) {
-                    console.error("❌ Disease Model Error");
-                    console.error("Status:",err.response?.status);
-                    console.error("Response:",err.response?.data);
-                    console.error("Headers:",err.response?.headers);
-                    console.error("Message:",err.message);
+                } catch (err) {
+                    console.error("❌ Disease detection failed:", err.message);
                     diseaseResult = null;
                 }
                 try {
                     fs.unlinkSync(req.file.path);
-                }
-                catch {}
+                } catch {}
             }
             let weatherContext = "";
             if (latitude && longitude) {

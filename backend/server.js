@@ -33,6 +33,14 @@ app.get("/ping", (req, res) => {
     res.send("pong");
 });
 
+app.get("/", (req, res) => {
+    res.send("Earthworm AI Backend is running.");
+});
+
+app.get("/api/health", (req, res) => {
+    res.json({starus: "ok"});
+});
+
 function getDistance(lat1, lon1, lat2, lon2) {
     const R = 6371;
 

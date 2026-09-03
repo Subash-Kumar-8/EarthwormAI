@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "mobile",
+    "name": "Earthworm AI",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -21,13 +21,18 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.mobile"
+      "package": "com.earthwormai.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "55f79a32-a656-4fa7-962c-c2738a6ae743"
+      }
+    }
   }
 }

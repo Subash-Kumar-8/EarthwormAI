@@ -38,7 +38,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/api/health", (req, res) => {
-    res.json({starus: "ok"});
+    res.json({status: "ok"});
 });
 
 function getDistance(lat1, lon1, lat2, lon2) {
